@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: eurekaserver
+  labels:
+    app: eurekaserver
+spec:
+  ports:
+    - port: 8761
+      targetPort: 8761
+  selector:
+    app: eurekaserver
+    tier: backend
+  type: LoadBalancer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eurekaserver
+  labels:
+    app: eurekaserver
+spec:
+  selector:
+    matchLabels:
+      app: eurekaserver
+      tier: backend
+  template:
+    metadata:
+      labels:
+        app: eurekaserver
+        tier: backend
+    spec:
+      containers:
+        - name: eurekaserver
+          image: sahaturjoy/servicediscovery:v1
+          ports:
+            - containerPort: 8761
+              name: eurekaserver

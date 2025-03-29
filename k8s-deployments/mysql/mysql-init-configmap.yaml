@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-initdb-config
+data:
+  init.sql: |
+    CREATE DATABASE IF NOT EXISTS userservice_db;
+    CREATE DATABASE IF NOT EXISTS productservice_db;
+    CREATE USER IF NOT EXISTS 'appuser'@'%' IDENTIFIED BY 'password';
+    GRANT ALL PRIVILEGES ON userservice_db.* TO 'appuser'@'%';
+    GRANT ALL PRIVILEGES ON productservice_db.* TO 'appuser'@'%';
+    FLUSH PRIVILEGES;

@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: userservice
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: userservice
+  template:
+    metadata:
+      labels:
+        app: userservice
+    spec:
+      containers:
+        - name: userservice
+          image: your-dockerhub-username/userservice:latest
+          ports:
+            - containerPort: 8081
+          env:
+            - name: DB_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: userservice-config
+                  key: DB_URL
+            - name: SERVER_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: userservice-config
+                  key: SERVER_PORT
+            - name: EUREKA_SERVER
+              valueFrom:
+                configMapKeyRef:
+                  name: userservice-config
+                  key: EUREKA_SERVER
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: userservice-secrets
+                  key: DB_USER
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: userservice-secrets
+                  key: DB_PASS
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: userservice
+spec:
+  selector:
+    app: userservice
+  ports:
+    - protocol: TCP
+      port: 8081
+      targetPort: 8081
+  type: ClusterIP

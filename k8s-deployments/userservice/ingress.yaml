@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: userservice-ingress
+spec:
+  rules:
+    - host: api.mydomain.com
+      http:
+        paths:
+          - path: /users
+            pathType: Prefix
+            backend:
+              service:
+                name: userservice
+                port:
+                  number: 80

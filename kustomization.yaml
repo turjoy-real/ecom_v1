@@ -1,0 +1,8 @@
+secretGenerator:
+  - name: mysql-pass
+    literals:
+      - password=Iam@007
+resources:
+  - k8s-deployments/mysql/mysql-deployment.yaml
+  - k8s-deployments/networking/servicediscovery/deployment.yaml
+  - k8s-deployments/userservice/userservice-deployment.yaml

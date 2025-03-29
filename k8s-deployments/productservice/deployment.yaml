@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: productservice
+  labels:
+    app: productservice
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: productservice
+  template:
+    metadata:
+      labels:
+        app: productservice
+    spec:
+      containers:
+        - name: productservice
+          image: myregistry.com/productservice:latest
+          env:
+            - name: DB_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: productservice-config
+                  key: db_url
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: productservice-secrets
+                  key: db_user
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: productservice-secrets
+                  key: db_pass
+            - name: ELASTICSEARCH_URL
+              value: "http://elasticsearch:9200" # <-- ✅ Connects to Elasticsearch
+          ports:
+            - containerPort: 8080

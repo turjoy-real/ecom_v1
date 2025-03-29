@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: userservice-config
+data:
+  DB_URL: "jdbc:mysql://mysql.default.svc.cluster.local:3306/scalar_ecom_v1"
+  SERVER_PORT: "8081"
+  EUREKA_SERVER: "http://eureka.default.svc.cluster.local:8761/eureka"
