@@ -1,5 +1,8 @@
 package com.services.userservice.services;
 
+import com.services.userservice.exceptions.IncorrectPassword;
+import com.services.userservice.exceptions.UserAlreadyRegistered;
+import com.services.userservice.exceptions.UserNotFound;
 import com.services.userservice.models.Token;
 import com.services.userservice.models.User;
 import com.services.userservice.repositories.TokenRepo;
@@ -27,8 +30,12 @@ public class UserService {
         this.userRepository = userRepository;
         this.tokenRepository = tokenRepository;
     }
-    public User signUp(String name, String email, String password) {
+    public User signUp(String name, String email, String password) throws UserAlreadyRegistered {
         //Validation
+
+        if (userRepository.findByEmail(email).isPresent()){
+            throw new UserAlreadyRegistered("User is already registered");
+        }
 
         User u = new User();
         u.setEmail(email);
@@ -36,14 +43,16 @@ public class UserService {
         u.setHashedPassword(bCryptPasswordEncoder.encode(password));
 
         User user = userRepository.save(u);
+        // print
+        System.err.println("User data: ...");
+        System.err.println(user);
         return user;
     }
 
     public Token login(String email, String password) {
         Optional<User> userOptional = userRepository.findByEmail(email);
         if (userOptional.isEmpty()) {
-            // THROW EXCEPTION
-            return null;
+            throw new UserNotFound("User not found");
         }
 
         User user = userOptional.get();
@@ -56,8 +65,10 @@ public class UserService {
             Date expiryAt = Date.from(onedayLater.atStartOfDay(ZoneId.systemDefault()).toInstant());
             token.setExpiryAt(expiryAt);
             return tokenRepository.save(token);
+        } else {
+            // throw exception
+            throw new IncorrectPassword("Incorrect password");
         }
-        return null;
     }
 
     public void logout(String token) {

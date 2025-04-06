@@ -1,14 +1,25 @@
 package com.services.userservice.controllers;
 
 import com.services.userservice.dtos.LoginRequestDto;
+import com.services.userservice.dtos.LoginResponseDto;
 import com.services.userservice.dtos.LogoutRequestDto;
 import com.services.userservice.dtos.SignUpRequestDto;
 import com.services.userservice.dtos.SignUpResponseDto;
+import com.services.userservice.mappers.ResponseMappers;
 import com.services.userservice.models.Token;
 import com.services.userservice.models.User;
 import com.services.userservice.services.UserService;
+
+import jakarta.validation.Valid;
 import lombok.NonNull;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.handler.annotation.support.MethodArgumentNotValidException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -20,20 +31,18 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public Token login(@RequestBody LoginRequestDto requestDto) {
+    public ResponseEntity<LoginResponseDto> login(@Valid @RequestBody LoginRequestDto requestDto) {
         // check if email and password in db
         // if yes create token (use random string) return token
         // else throw some error
-        return userService.login(requestDto.getEmail(), requestDto.getPassword());
+        return ResponseEntity.ok()
+                .body(ResponseMappers.toLoginResponseDto(userService.login(requestDto.getEmail(), requestDto.getPassword())));
     }
 
     @PostMapping("/signup")
-    public SignUpResponseDto signUp(@RequestBody SignUpRequestDto requestDto) {
-
-        // hash password
-        // create user
-        // return user
-        return toSignUpResponseDto(userService.signUp(requestDto.getName(), requestDto.getEmail(), requestDto.getPassword()));
+    public ResponseEntity<SignUpResponseDto> signUp(@Valid @RequestBody SignUpRequestDto requestDto) {
+        SignUpResponseDto signUpResponseDto = toSignUpResponseDto(userService.signUp(requestDto.getName(), requestDto.getEmail(), requestDto.getPassword()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(signUpResponseDto);
     }
 
     @PostMapping("/logout")

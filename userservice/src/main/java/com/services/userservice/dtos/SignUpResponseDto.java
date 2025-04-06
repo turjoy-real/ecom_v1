@@ -1,5 +1,8 @@
 package com.services.userservice.dtos;
 
+
+import com.services.userservice.models.ErrorResponse;
+
 import lombok.Getter;
 import lombok.Setter;
 
