@@ -1,5 +1,7 @@
 package com.services.productservice.models;
 
+import java.io.Serializable;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -10,7 +12,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Product extends BaseModel {
+public class Product extends BaseModel implements Serializable {
     private String name;
     private String description;
     private Double price;

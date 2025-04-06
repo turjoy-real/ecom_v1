@@ -1,5 +1,7 @@
 package com.services.productservice.models;
 
+import java.io.Serializable;
+
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.*;

@@ -1,9 +1,7 @@
 package com.services.productservice.controllers;
 
-import co.elastic.clients.elasticsearch.core.SearchResponse;
 import com.services.productservice.dtos.ProductRequest;
 import com.services.productservice.dtos.ProductResponse;
-import com.services.productservice.models.Product;
 import com.services.productservice.services.ProductService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

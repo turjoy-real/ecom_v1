@@ -1,5 +1,7 @@
 package com.services.productservice.models;
 
+import java.io.Serializable;
+
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -8,7 +10,7 @@ import lombok.Data;
 
 @MappedSuperclass
 @Data
-public class BaseModel {
+public class BaseModel implements Serializable{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

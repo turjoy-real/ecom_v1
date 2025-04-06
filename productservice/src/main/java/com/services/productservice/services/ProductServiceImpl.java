@@ -1,7 +1,5 @@
 package com.services.productservice.services;
 
-import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import com.services.productservice.configs.RestTemplateConfig;
 import com.services.productservice.dtos.ProductRequest;
 import com.services.productservice.dtos.ProductResponse;
 import com.services.productservice.models.Category;
@@ -14,10 +12,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.ResponseEntity;
+import org.springframework.data.redis.core.RedisTemplate;
+
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -29,7 +27,9 @@ public class ProductServiceImpl implements ProductService {
     private final ProductRepository productRepository;
     private final ProductElasticsearchRepository productElasticsearchRepository;
     private final CategoryRepository categoryRepository;
-    private final RestTemplate restTemplate;
+    // private final RestTemplate restTemplate;
+    private final RedisTemplate<Long, Object> redisTemplate;
+    private final CacheService cacheService;
 
     private static final Logger logger = LoggerFactory.getLogger(ProductServiceImpl.class);
 
@@ -71,16 +71,23 @@ public class ProductServiceImpl implements ProductService {
     public List<ProductResponse> getAllProducts(int pageNumber, int pageSize) {
         Pageable pageable = PageRequest.of(pageNumber, pageSize);
         return productRepository.findAll(pageable).stream().map(this::mapToResponse).collect(Collectors.toList());
-//        return productRepository.findAll().stream()
-//                .map(this::mapToResponse)
-//                .collect(Collectors.toList());
+        // return productRepository.findAll().stream()
+        // .map(this::mapToResponse)
+        // .collect(Collectors.toList());
     }
 
     @Override
     public ProductResponse getProductById(Long id) {
-        ResponseEntity<String> responseEntity = restTemplate.getForEntity("http://userservice/users/1", String.class);
+        // ResponseEntity<String> responseEntity =
+        // restTemplate.getForEntity("http://userservice/users/1", String.class);
+        if (cacheService.isProductCached(redisTemplate, id)) {
+            logger.info("Product found in cache");
+            Product product = cacheService.getProductFromCache(redisTemplate, id);
+            return mapToResponse(product);
+        }
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
+        cacheService.cacheProduct(redisTemplate, id, product);
         return mapToResponse(product);
     }
 
@@ -151,7 +158,7 @@ public class ProductServiceImpl implements ProductService {
             return categoryRepository.save(category1);
         });
         return ProductResponse.builder()
-                .id(Long.valueOf(product.getId()))  // Convert String ID from Elasticsearch to Long
+                .id(Long.valueOf(product.getId())) // Convert String ID from Elasticsearch to Long
                 .name(product.getName())
                 .description(product.getDescription())
                 .price(product.getPrice())
