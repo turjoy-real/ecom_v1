@@ -31,12 +31,10 @@ import java.security.Principal;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Date;
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 // Ideally should be an interface
 @Service
@@ -86,8 +84,7 @@ public class UserService {
 
     public Token login(String email, String password) {
         Authentication authentication = authManager
-                .authenticate(new UsernamePasswordAuthenticationToken(email, password,
-                        List.of(new SimpleGrantedAuthority("ROLE_USER"))));
+                .authenticate(new UsernamePasswordAuthenticationToken(email, password));
         Optional<User> userOptional = userRepository.findByEmail(email);
         System.err.println("User data: ...");
         System.err.println(authentication);
