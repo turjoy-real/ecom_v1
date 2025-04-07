@@ -7,33 +7,68 @@ import com.services.userservice.models.Token;
 import com.services.userservice.models.User;
 import com.services.userservice.repositories.TokenRepo;
 import com.services.userservice.repositories.UserRepo;
+
+import lombok.RequiredArgsConstructor;
+
 import org.apache.commons.lang3.RandomStringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.OAuth2AccessToken;
+import org.springframework.security.oauth2.server.authorization.OAuth2Authorization;
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
+import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.token.DefaultOAuth2TokenContext;
+import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenContext;
+import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenGenerator;
 import org.springframework.stereotype.Service;
 
+import java.security.Principal;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 // Ideally should be an interface
-@Service // This is a bean, so we can inject it anywhere we need it.
+@Service
+@RequiredArgsConstructor // This is a bean, so we can inject it anywhere we need it.
 public class UserService {
-    private BCryptPasswordEncoder bCryptPasswordEncoder;
-    private UserRepo userRepository;
-    private TokenRepo tokenRepository;
 
-    public UserService(BCryptPasswordEncoder bCryptPasswordEncoder,
-                       UserRepo userRepository,
-                       TokenRepo tokenRepository) {
-        this.bCryptPasswordEncoder = bCryptPasswordEncoder;
-        this.userRepository = userRepository;
-        this.tokenRepository = tokenRepository;
-    }
+    private final JWTService JWTService;
+    private final BCryptPasswordEncoder bCryptPasswordEncoder;
+    private final UserRepo userRepository;
+    private final TokenRepo tokenRepository;
+    private final AuthenticationManager authManager;
+
+    private final AuthenticationManager authenticationManager;
+
+    private final RegisteredClientRepository registeredClientRepository;
+
+    private final OAuth2AuthorizationService authorizationService;
+
+    private final OAuth2TokenGenerator<OAuth2AccessToken> tokenGenerator;
+
+    // public UserService(BCryptPasswordEncoder bCryptPasswordEncoder,
+    // UserRepo userRepository,
+    // TokenRepo tokenRepository, AuthenticationManager authManager) {
+    // this.bCryptPasswordEncoder = bCryptPasswordEncoder;
+    // this.userRepository = userRepository;
+    // this.tokenRepository = tokenRepository;
+    // this.authManager = authManager;
+    // }
     public User signUp(String name, String email, String password) throws UserAlreadyRegistered {
-        //Validation
+        // Validation
 
-        if (userRepository.findByEmail(email).isPresent()){
+        if (userRepository.findByEmail(email).isPresent()) {
             throw new UserAlreadyRegistered("User is already registered");
         }
 
@@ -50,16 +85,61 @@ public class UserService {
     }
 
     public Token login(String email, String password) {
+        Authentication authentication = authManager
+                .authenticate(new UsernamePasswordAuthenticationToken(email, password,
+                        List.of(new SimpleGrantedAuthority("ROLE_USER"))));
         Optional<User> userOptional = userRepository.findByEmail(email);
+        System.err.println("User data: ...");
+        System.err.println(authentication);
         if (userOptional.isEmpty()) {
             throw new UserNotFound("User not found");
         }
 
+        RegisteredClient registeredClient = registeredClientRepository.findByClientId("client");
+        if (registeredClient == null) {
+            throw new RuntimeException("OAuth2 Client not found");
+        }
+
         User user = userOptional.get();
+
+        OAuth2Authorization authorization = OAuth2Authorization.withRegisteredClient(registeredClient)
+                .principalName(email)
+                .authorizationGrantType(AuthorizationGrantType.PASSWORD)
+                .attribute(Principal.class.getName(), authentication.getPrincipal())
+                .build();
+
+        OAuth2TokenContext tokenContext = DefaultOAuth2TokenContext.builder()
+                .registeredClient(registeredClient)
+                .principal(
+                        authentication)
+                .authorization(authorization)
+                .tokenType(OAuth2TokenType.ACCESS_TOKEN)
+                .authorizationGrantType(AuthorizationGrantType.PASSWORD)
+                .authorizedScopes(Set.of("read", "write"))
+                .build();
+        System.out.println("🔧 TokenContext principal: " + tokenContext.getPrincipal());
+        System.out.println("🔧 TokenContext scopes: " + tokenContext.getAuthorizedScopes());
+        System.out.println("🔧 TokenContext grant type: " + tokenContext.getAuthorizationGrantType());
+
+        OAuth2AccessToken accessToken = tokenGenerator.generate(tokenContext);
+
+        System.out.println("🔧 Token: " + accessToken);
+        if (accessToken == null) {
+            throw new RuntimeException("Token generation failed");
+        }
+
+        // Task: Check if the password is correct
         if (bCryptPasswordEncoder.matches(password, user.getHashedPassword())) {
+            String tokenVal = null;
+
+            if (authentication.isAuthenticated()) {
+                tokenVal = JWTService.generateToken(email);
+            } else {
+                throw new IncorrectPassword("Incorrect password");
+            }
             Token token = new Token();
             token.setUser(user);
-            token.setValue(RandomStringUtils.randomAlphabetic(128));
+            token.setValue(tokenVal);
             LocalDate today = LocalDate.now();
             LocalDate onedayLater = today.plusDays(1);
             Date expiryAt = Date.from(onedayLater.atStartOfDay(ZoneId.systemDefault()).toInstant());
@@ -85,7 +165,9 @@ public class UserService {
 
     public User validateToken(String token) {
         Optional<Token> token1 = tokenRepository.findByValueAndDeletedEquals(token, false);
-        //Optional<Token> token1 = tokenRepository.findByValueAndDeletedEqualsAndExipryAtGreaterThan(token, false);
+        // Optional<Token> token1 =
+        // tokenRepository.findByValueAndDeletedEqualsAndExipryAtGreaterThan(token,
+        // false);
 
         if (token1.isEmpty()) {
             return null;
