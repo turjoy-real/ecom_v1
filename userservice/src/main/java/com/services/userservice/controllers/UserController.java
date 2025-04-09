@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/users")
 public class UserController {
     private UserService userService;
+
     public UserController(UserService userService) {
         this.userService = userService;
     }
@@ -36,12 +37,14 @@ public class UserController {
         // if yes create token (use random string) return token
         // else throw some error
         return ResponseEntity.ok()
-                .body(ResponseMappers.toLoginResponseDto(userService.login(requestDto.getEmail(), requestDto.getPassword())));
+                .body(ResponseMappers
+                        .toLoginResponseDto(userService.login(requestDto.getEmail(), requestDto.getPassword())));
     }
 
     @PostMapping("/signup")
     public ResponseEntity<SignUpResponseDto> signUp(@Valid @RequestBody SignUpRequestDto requestDto) {
-        SignUpResponseDto signUpResponseDto = toSignUpResponseDto(userService.signUp(requestDto.getName(), requestDto.getEmail(), requestDto.getPassword()));
+        SignUpResponseDto signUpResponseDto = toSignUpResponseDto(
+                userService.signUp(requestDto.getName(), requestDto.getEmail(), requestDto.getPassword()));
         return ResponseEntity.status(HttpStatus.CREATED).body(signUpResponseDto);
     }
 
@@ -71,4 +74,15 @@ public class UserController {
     public User validateToken(@PathVariable("token") @NonNull String token) {
         return userService.validateToken(token);
     }
+
+    @PostMapping("/findByEmail/{email}")
+    public ResponseEntity<User> findByEmail(@PathVariable("email") @NonNull String email) {
+        User user = userService.getUserByEmail(email);
+        if (user != null) {
+            return ResponseEntity.ok(user);
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
 }
