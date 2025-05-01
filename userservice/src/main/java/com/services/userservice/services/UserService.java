@@ -1,6 +1,7 @@
 package com.services.userservice.services;
 
 import com.services.userservice.exceptions.IncorrectPassword;
+import com.services.userservice.exceptions.UnAuthorized;
 import com.services.userservice.exceptions.UserAlreadyRegistered;
 import com.services.userservice.exceptions.UserNotFound;
 import com.services.userservice.models.Token;
@@ -11,49 +12,49 @@ import com.services.userservice.repositories.UserRepo;
 import lombok.RequiredArgsConstructor;
 
 import org.apache.commons.lang3.RandomStringUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+// import org.springframework.beans.factory.annotation.Autowired;
+// import org.springframework.security.authentication.AuthenticationManager;
+// import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.oauth2.core.AuthorizationGrantType;
-import org.springframework.security.oauth2.core.OAuth2AccessToken;
-import org.springframework.security.oauth2.server.authorization.OAuth2Authorization;
-import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
-import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
-import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
-import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
-import org.springframework.security.oauth2.server.authorization.token.DefaultOAuth2TokenContext;
-import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenContext;
-import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenGenerator;
+// import org.springframework.security.oauth2.core.AuthorizationGrantType;
+// import org.springframework.security.oauth2.core.OAuth2AccessToken;
+// import org.springframework.security.oauth2.server.authorization.OAuth2Authorization;
+// import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
+// import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
+// import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
+// import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
+// import org.springframework.security.oauth2.server.authorization.token.DefaultOAuth2TokenContext;
+// import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenContext;
+// import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenGenerator;
 import org.springframework.stereotype.Service;
 
-import java.security.Principal;
+// import java.security.Principal;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Date;
 import java.util.Optional;
-import java.util.Set;
+// import java.util.Set;
 
-import org.springframework.security.core.Authentication;
+// import org.springframework.security.core.Authentication;
 
 // Ideally should be an interface
 @Service
 @RequiredArgsConstructor // This is a bean, so we can inject it anywhere we need it.
 public class UserService {
 
-    private final JWTService JWTService;
+    // private final JWTService JWTService;
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
     private final UserRepo userRepository;
     private final TokenRepo tokenRepository;
-    private final AuthenticationManager authManager;
+    // private final AuthenticationManager authManager;
 
-    private final AuthenticationManager authenticationManager;
+    // private final AuthenticationManager authenticationManager;
 
-    private final RegisteredClientRepository registeredClientRepository;
+    // private final RegisteredClientRepository registeredClientRepository;
 
-    private final OAuth2AuthorizationService authorizationService;
+    // private final OAuth2AuthorizationService authorizationService;
 
-    private final OAuth2TokenGenerator<OAuth2AccessToken> tokenGenerator;
+    // private final OAuth2TokenGenerator<OAuth2AccessToken> tokenGenerator;
 
     // public UserService(BCryptPasswordEncoder bCryptPasswordEncoder,
     // UserRepo userRepository,
@@ -165,19 +166,19 @@ public class UserService {
         tokenRepository.save(t);
     }
 
-    public User validateToken(String token) {
+    public User validateToken(String token) throws UnAuthorized {
         Optional<Token> token1 = tokenRepository.findByValueAndDeletedEquals(token, false);
         // Optional<Token> token1 =
         // tokenRepository.findByValueAndDeletedEqualsAndExipryAtGreaterThan(token,
         // false);
 
         if (token1.isEmpty()) {
-            return null;
+            throw new UnAuthorized("Token is not valid");
         }
 
         Token t = token1.get();
         if (t.getExpiryAt().before(new Date())) {
-            return null;
+            throw new UnAuthorized("Token is expired");
         }
 
         return t.getUser();

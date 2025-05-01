@@ -11,10 +11,10 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.services.userservice.exceptions.IncorrectPassword;
+import com.services.userservice.exceptions.UnAuthorized;
 import com.services.userservice.exceptions.UserAlreadyRegistered;
 import com.services.userservice.exceptions.UserNotFound;
 import com.services.userservice.models.ErrorResponse;
-
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -46,6 +46,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
     }
 
+    @ExceptionHandler(UnAuthorized.class)
+    public ResponseEntity<ErrorResponse> handleIncorrectToken(UnAuthorized ex) {
+        ErrorResponse error = new ErrorResponse();
+        error.setError("InvalidToken");
+        error.setMessage(ex.getMessage());
+        error.setStatusCode(HttpStatus.UNAUTHORIZED.value());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
         ErrorResponse error = new ErrorResponse();
@@ -58,7 +67,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> handleValidationExceptions(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
-        
+
         ex.getBindingResult().getAllErrors().forEach(error -> {
             String fieldName = ((FieldError) error).getField();
             String errorMessage = error.getDefaultMessage();
