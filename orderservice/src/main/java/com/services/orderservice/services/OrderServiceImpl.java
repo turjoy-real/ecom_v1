@@ -55,14 +55,14 @@ public class OrderServiceImpl implements OrderService {
         Order savedOrder = orderRepository.save(order);
         
         // Publish OrderCreatedEvent
-        OrderCreatedEvent event = new OrderCreatedEvent();
-        event.setOrderNumber(savedOrder.getOrderNumber());
-        event.setUserId(savedOrder.getUserId());
-        event.setTotalAmount(savedOrder.getTotalAmount());
-        event.setItems(orderRequest.getItems());
-        event.setPaymentMethod(savedOrder.getPaymentMethod());
+        // OrderCreatedEvent event = new OrderCreatedEvent();
+        // event.setOrderNumber(savedOrder.getOrderNumber());
+        // event.setUserId(savedOrder.getUserId());
+        // event.setTotalAmount(savedOrder.getTotalAmount());
+        // event.setItems(orderRequest.getItems());
+        // event.setPaymentMethod(savedOrder.getPaymentMethod());
         
-        kafkaTemplate.send("order-created-topic", event);
+        // kafkaTemplate.send("order-created-topic", event);
         
         return mapToOrderResponse(savedOrder);
     }

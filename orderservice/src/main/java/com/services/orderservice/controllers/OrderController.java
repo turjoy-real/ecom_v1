@@ -25,20 +25,19 @@ public class OrderController {
     
     @PostMapping
     public ResponseEntity<OrderResponseDTO> createOrder(@RequestBody OrderRequestDTO orderRequest) {
-        // SendEmailEventDTO sendEmailEvent = new SendEmailEventDTO();
-        // sendEmailEvent.setBody("Order placed");
-        // sendEmailEvent.setFrom("dev@turjoysaha.com");
-        // sendEmailEvent.setSubject("Order Confirmation");
-        // sendEmailEvent.setTo("user@email.com");
+        SendEmailEventDTO sendEmailEvent = new SendEmailEventDTO();
+        sendEmailEvent.setBody("Order placed");
+        sendEmailEvent.setFrom("dev@turjoysaha.com");
+        sendEmailEvent.setSubject("Order Confirmation");
+        sendEmailEvent.setTo("user@email.com");
 
         try {
-            kafkaTemplate.send("send-email", "Test");
+            kafkaTemplate.send("order-email-topic", "Test");
         } catch (Exception e) {
            throw new RuntimeException("Failed to send email event", e);
         }
         
-        // return ResponseEntity.ok(orderService.createOrder(orderRequest));
-        return null;
+        return ResponseEntity.ok(orderService.createOrder(orderRequest));
     }
     
     @GetMapping("/{orderNumber}")
