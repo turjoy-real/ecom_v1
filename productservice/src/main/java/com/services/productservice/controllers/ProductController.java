@@ -2,7 +2,6 @@ package com.services.productservice.controllers;
 
 import com.services.productservice.dtos.ProductRequest;
 import com.services.productservice.dtos.ProductResponse;
-import com.services.productservice.models.Product;
 import com.services.productservice.services.ProductService;
 
 import org.springframework.transaction.annotation.Transactional;
