@@ -33,6 +33,13 @@ public class CartController {
         return ResponseEntity.noContent().build();
     }
 
+    @PatchMapping("/{userId}/items/{productId}/decrement")
+    public ResponseEntity<CartResponse> decrementItemQuantity(
+            @PathVariable String userId,
+            @PathVariable String productId) {
+        return ResponseEntity.ok(cartService.decrementItemQuantity(userId, productId));
+    }
+
     @DeleteMapping("/{userId}")
     public ResponseEntity<Void> clearCart(@PathVariable String userId) {
         cartService.clearCart(userId);

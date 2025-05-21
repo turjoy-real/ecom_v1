@@ -37,6 +37,12 @@ public class ProductController {
         return ResponseEntity.ok(productService.getProductById(id));
     }
 
+    @GetMapping("/{id}/verify-stock")
+    @Transactional(readOnly = true)
+    public ResponseEntity<Boolean> verifyStock(@PathVariable Long id, @RequestParam int quantity) {
+        return ResponseEntity.ok(productService.verifyStock(id, quantity));
+    }
+
     @GetMapping("/search")
     public ResponseEntity<Page<ProductResponse>> searchProducts(
             @RequestParam String keyword,

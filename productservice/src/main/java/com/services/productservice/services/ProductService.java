@@ -15,6 +15,8 @@ public interface ProductService {
 
     ProductResponse getProductById(Long id);
 
+    boolean verifyStock(Long id, int quantity);
+
     List<ProductResponse> searchProducts(String keyword);
 
     // New search methods with pagination

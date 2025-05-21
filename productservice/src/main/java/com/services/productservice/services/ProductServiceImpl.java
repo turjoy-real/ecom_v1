@@ -19,6 +19,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.transaction.annotation.Transactional;
 
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
@@ -180,6 +181,15 @@ public class ProductServiceImpl implements ProductService {
         // Now delete the product
         productRepository.deleteById(id);
         productElasticsearchRepository.deleteById(id.toString());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean verifyStock(Long id, int quantity) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ProductNotFoundException("Product not found with ID: " + id));
+
+        return product.getStockQuantity() >= quantity;
     }
 
     private ProductResponse mapToResponse(Product product) {
