@@ -13,6 +13,8 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Category extends BaseModel {
+@ToString
+public class Category extends BaseModel implements Serializable {
+    private static final long serialVersionUID = 1L;
     String name;
 }

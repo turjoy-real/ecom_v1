@@ -10,6 +10,7 @@ import org.springframework.data.elasticsearch.annotations.Document;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
 public class ProductDocument {
 
     @Id
@@ -18,7 +19,7 @@ public class ProductDocument {
     private String name;
     private String description;
     private Double price;
-    private Category category;
+    private CategoryDocument category;
     private String brand;
     private Integer stockQuantity;
     private String imageUrl;

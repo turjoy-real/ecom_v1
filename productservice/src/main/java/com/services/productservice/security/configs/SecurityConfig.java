@@ -17,9 +17,10 @@ public class SecurityConfig {
         // .formLogin(Customizer.withDefaults());
         http
                 .authorizeHttpRequests((authorize) -> authorize
-                        .requestMatchers("/products/{id}").hasAuthority("CUSTOMER")
-                        .requestMatchers("/products").hasAuthority("ADMIN")
-                        .anyRequest().authenticated()
+                        .anyRequest().permitAll()
+                // .requestMatchers("/products/{id}").hasAuthority("CUSTOMER")
+                // .requestMatchers("/products").hasAuthority("ADMIN")
+                // .anyRequest().authenticated()
 
                 )
                 .cors().disable()
