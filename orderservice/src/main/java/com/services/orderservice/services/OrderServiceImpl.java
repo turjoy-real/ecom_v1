@@ -1,142 +1,186 @@
 package com.services.orderservice.services;
 
-
-import com.services.orderservice.dtos.*;
-import com.services.orderservice.events.OrderCreatedEvent;
-import com.services.orderservice.events.OrderStatusEvent;
-import com.services.orderservice.models.*;
+import com.services.orderservice.dtos.OrderItemRequest;
+import com.services.orderservice.dtos.OrderRequest;
+import com.services.orderservice.dtos.OrderResponse;
+import com.services.orderservice.exceptions.OrderNotFoundException;
+import com.services.orderservice.exceptions.UserVerificationException;
+import com.services.orderservice.models.Order;
+import com.services.orderservice.models.OrderItem;
+import com.services.orderservice.models.OrderStatus;
+import com.services.orderservice.models.PaymentStatus;
 import com.services.orderservice.repositories.OrderRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class OrderServiceImpl implements OrderService {
+
     private final OrderRepository orderRepository;
-    private final KafkaTemplate<String, Object> kafkaTemplate;
-    
+    private final ProductServiceClient productServiceClient;
+    private final UserServiceClient userServiceClient;
+
     @Override
     @Transactional
-    public OrderResponseDTO createOrder(OrderRequestDTO orderRequest) {
+    public OrderResponse createOrder(OrderRequest request) {
+        // Verify user exists
+        if (!userServiceClient.verifyUser(request.getUserId())) {
+            throw new UserVerificationException("User not found with ID: " + request.getUserId());
+        }
+
+        // Create order
         Order order = new Order();
-        order.setOrderNumber(generateOrderNumber());
-        order.setUserId(orderRequest.getUserId());
+        order.setUserId(request.getUserId());
+        order.setStatus(OrderStatus.CREATED);
+        order.setPaymentStatus(PaymentStatus.PENDING);
         order.setOrderDate(LocalDateTime.now());
-        order.setStatus(Order.OrderStatus.CREATED);
-        order.setShippingAddress(orderRequest.getShippingAddress());
-        order.setPaymentMethod(orderRequest.getPaymentMethod());
-        
-        List<OrderItem> items = orderRequest.getItems().stream()
-                .map(itemDto -> {
-                    OrderItem item = new OrderItem();
-                    item.setProductId(itemDto.getProductId());
-                    item.setProductName(itemDto.getProductName());
-                    item.setPrice(itemDto.getPrice());
-                    item.setQuantity(itemDto.getQuantity());
-                    item.setOrder(order);
-                    return item;
+        order.setShippingAddress(request.getShippingAddress());
+
+        // Create and validate order items
+        List<OrderItem> orderItems = request.getItems().stream()
+                .map(itemRequest -> {
+                    // Verify product exists and has enough stock
+                    if (!productServiceClient.verifyStock(itemRequest.getProductId(), itemRequest.getQuantity())) {
+                        throw new RuntimeException("Insufficient stock for product: " + itemRequest.getProductId());
+                    }
+
+                    // Get product details
+                    ProductServiceClient.ProductDetails productDetails = productServiceClient
+                            .getProductDetails(itemRequest.getProductId());
+
+                    OrderItem orderItem = new OrderItem();
+                    orderItem.setProductId(itemRequest.getProductId());
+                    orderItem.setProductName(productDetails.getName());
+                    orderItem.setPrice(productDetails.getPrice());
+                    orderItem.setQuantity(itemRequest.getQuantity());
+                    orderItem.setSubtotal(productDetails.getPrice() * itemRequest.getQuantity());
+                    orderItem.setOrder(order);
+                    return orderItem;
                 })
                 .collect(Collectors.toList());
-        
-        order.setItems(items);
-        
-        double total = items.stream()
-                .mapToDouble(item -> item.getPrice() * item.getQuantity())
+
+        order.setItems(orderItems);
+        // Calculate total amount
+        double totalAmount = orderItems.stream()
+                .mapToDouble(OrderItem::getSubtotal)
                 .sum();
-        order.setTotalAmount(total);
-        
+        order.setTotalAmount(totalAmount);
         Order savedOrder = orderRepository.save(order);
-        
-        // Publish OrderCreatedEvent
-        // OrderCreatedEvent event = new OrderCreatedEvent();
-        // event.setOrderNumber(savedOrder.getOrderNumber());
-        // event.setUserId(savedOrder.getUserId());
-        // event.setTotalAmount(savedOrder.getTotalAmount());
-        // event.setItems(orderRequest.getItems());
-        // event.setPaymentMethod(savedOrder.getPaymentMethod());
-        
-        // kafkaTemplate.send("order-created-topic", event);
-        
-        return mapToOrderResponse(savedOrder);
+        return convertToOrderResponse(savedOrder);
     }
-    
+
     @Override
-    public OrderResponseDTO getOrderByNumber(String orderNumber) {
-        Order order = orderRepository.findByOrderNumber(orderNumber);
-        return mapToOrderResponse(order);
+    @Transactional(readOnly = true)
+    public OrderResponse getOrder(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException(orderId));
+        return convertToOrderResponse(order);
     }
-    
+
     @Override
-    public List<OrderResponseDTO> getOrdersByUser(String userId) {
-        return orderRepository.findByUserId(userId).stream()
-                .map(this::mapToOrderResponse)
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getUserOrders(String userId, String status, String paymentStatus, String sortBy,
+            String sortDirection) {
+        List<Order> orders;
+
+        if (status != null && paymentStatus != null) {
+            orders = orderRepository.findByUserIdAndStatusAndPaymentStatus(
+                    userId,
+                    OrderStatus.valueOf(status.toUpperCase()),
+                    PaymentStatus.valueOf(paymentStatus.toUpperCase()));
+        } else if (status != null) {
+            orders = orderRepository.findByUserIdAndStatus(
+                    userId,
+                    OrderStatus.valueOf(status.toUpperCase()));
+        } else if (paymentStatus != null) {
+            orders = orderRepository.findByUserIdAndPaymentStatus(
+                    userId,
+                    PaymentStatus.valueOf(paymentStatus.toUpperCase()));
+        } else {
+            orders = orderRepository.findByUserId(userId);
+        }
+
+        // Sort the orders
+        orders.sort((o1, o2) -> {
+            int direction = sortDirection.equalsIgnoreCase("desc") ? -1 : 1;
+            switch (sortBy.toLowerCase()) {
+                case "orderdate":
+                    return direction * o1.getOrderDate().compareTo(o2.getOrderDate());
+                case "totalamount":
+                    return direction * Double.compare(o1.getTotalAmount(), o2.getTotalAmount());
+                case "status":
+                    return direction * o1.getStatus().name().compareTo(o2.getStatus().name());
+                case "paymentstatus":
+                    return direction * o1.getPaymentStatus().name().compareTo(o2.getPaymentStatus().name());
+                default:
+                    return direction * o1.getOrderDate().compareTo(o2.getOrderDate());
+            }
+        });
+
+        return orders.stream()
+                .map(this::convertToOrderResponse)
                 .collect(Collectors.toList());
     }
-    
+
     @Override
     @Transactional
-    public OrderResponseDTO updateOrderStatus(OrderStatusUpdateDTO statusUpdate) {
-        Order order = orderRepository.findByOrderNumber(statusUpdate.getOrderNumber());
-        order.setStatus(statusUpdate.getNewStatus());
-        
-        if (statusUpdate.getTrackingNumber() != null) {
-            order.setTrackingNumber(statusUpdate.getTrackingNumber());
+    public OrderResponse updateOrderStatus(Long orderId, String status) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException(orderId));
+
+        try {
+            OrderStatus newStatus = OrderStatus.valueOf(status.toUpperCase());
+            order.setStatus(newStatus);
+            return convertToOrderResponse(orderRepository.save(order));
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Invalid order status: " + status);
         }
-        
-        if (statusUpdate.getEstimatedDelivery() != null) {
-            order.setEstimatedDelivery(statusUpdate.getEstimatedDelivery());
+    }
+
+    @Override
+    @Transactional
+    public void cancelOrder(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException(orderId));
+
+        if (order.getStatus() == OrderStatus.DELIVERED) {
+            throw new RuntimeException("Cannot cancel a delivered order");
         }
-        
-        Order updatedOrder = orderRepository.save(order);
-        
-        // Publish OrderStatusEvent
-        OrderStatusEvent event = new OrderStatusEvent();
-        event.setOrderNumber(updatedOrder.getOrderNumber());
-        event.setUserId(updatedOrder.getUserId());
-        event.setStatus(updatedOrder.getStatus());
-        event.setTrackingNumber(updatedOrder.getTrackingNumber());
-        event.setEstimatedDelivery(updatedOrder.getEstimatedDelivery());
-        
-        kafkaTemplate.send("order-status-updated-topic", event);
-        
-        return mapToOrderResponse(updatedOrder);
+
+        order.setStatus(OrderStatus.CANCELLED);
+        orderRepository.save(order);
     }
-    
-    private String generateOrderNumber() {
-        return "ORD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-    }
-    
-    private OrderResponseDTO mapToOrderResponse(Order order) {
-        OrderResponseDTO response = new OrderResponseDTO();
-        response.setId(order.getId());
-        response.setOrderNumber(order.getOrderNumber());
+
+    private OrderResponse convertToOrderResponse(Order order) {
+        OrderResponse response = new OrderResponse();
+        response.setId(String.valueOf(order.getId()));
         response.setUserId(order.getUserId());
+        response.setStatus(order.getStatus().name());
+        response.setPaymentStatus(order.getPaymentStatus());
         response.setOrderDate(order.getOrderDate());
-        response.setStatus(order.getStatus());
-        response.setTotalAmount(order.getTotalAmount());
+        response.setCreatedAt(order.getCreatedAt());
         response.setShippingAddress(order.getShippingAddress());
-        response.setPaymentMethod(order.getPaymentMethod());
-        response.setTrackingNumber(order.getTrackingNumber());
-        response.setEstimatedDelivery(order.getEstimatedDelivery());
-        
-        response.setItems(order.getItems().stream()
+
+        List<OrderResponse.OrderItemResponse> itemResponses = order.getItems().stream()
                 .map(item -> {
-                    OrderItemDTO dto = new OrderItemDTO();
-                    dto.setProductId(item.getProductId());
-                    dto.setProductName(item.getProductName());
-                    dto.setPrice(item.getPrice());
-                    dto.setQuantity(item.getQuantity());
-                    return dto;
+                    OrderResponse.OrderItemResponse itemResponse = new OrderResponse.OrderItemResponse();
+                    itemResponse.setProductId(item.getProductId());
+                    itemResponse.setProductName(item.getProductName());
+                    itemResponse.setPrice(item.getPrice());
+                    itemResponse.setQuantity(item.getQuantity());
+                    itemResponse.setSubtotal(item.getSubtotal());
+                    return itemResponse;
                 })
-                .collect(Collectors.toList()));
-        
+                .collect(Collectors.toList());
+
+        response.setItems(itemResponses);
+        response.setTotalAmount(order.getTotalAmount());
         return response;
     }
 }

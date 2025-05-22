@@ -5,7 +5,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import com.services.orderservice.models.Order;
+import com.services.orderservice.models.OrderStatus;
 
 @Data
 public class OrderResponseDTO {
@@ -13,7 +13,7 @@ public class OrderResponseDTO {
     private String orderNumber;
     private String userId;
     private LocalDateTime orderDate;
-    private Order.OrderStatus status;
+    private OrderStatus status;
     private List<OrderItemDTO> items;
     private Double totalAmount;
     private String shippingAddress;

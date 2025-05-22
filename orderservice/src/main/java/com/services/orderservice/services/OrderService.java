@@ -1,14 +1,18 @@
 package com.services.orderservice.services;
 
-import com.services.orderservice.dtos.OrderRequestDTO;
-import com.services.orderservice.dtos.OrderResponseDTO;
-import com.services.orderservice.dtos.OrderStatusUpdateDTO;
-
+import com.services.orderservice.dtos.OrderRequest;
+import com.services.orderservice.dtos.OrderResponse;
 import java.util.List;
 
 public interface OrderService {
-    OrderResponseDTO createOrder(OrderRequestDTO orderRequest);
-    OrderResponseDTO getOrderByNumber(String orderNumber);
-    List<OrderResponseDTO> getOrdersByUser(String userId);
-    OrderResponseDTO updateOrderStatus(OrderStatusUpdateDTO statusUpdate);
+    OrderResponse createOrder(OrderRequest request);
+
+    OrderResponse getOrder(Long orderId);
+
+    List<OrderResponse> getUserOrders(String userId, String status, String paymentStatus, String sortBy,
+            String sortDirection);
+
+    OrderResponse updateOrderStatus(Long orderId, String status);
+
+    void cancelOrder(Long orderId);
 }

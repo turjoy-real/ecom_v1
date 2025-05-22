@@ -2,7 +2,7 @@ package com.services.orderservice.events;
 
 import java.time.LocalDateTime;
 
-import com.services.orderservice.models.Order;
+import com.services.orderservice.models.OrderStatus;
 
 import lombok.Data;
 
@@ -10,7 +10,7 @@ import lombok.Data;
 public class OrderStatusEvent {
     private String orderNumber;
     private String userId;
-    private Order.OrderStatus status;
+    private OrderStatus status;
     private String trackingNumber;
     private LocalDateTime estimatedDelivery;
 }
