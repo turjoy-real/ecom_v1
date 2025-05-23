@@ -191,4 +191,8 @@ public class UserService {
         }
         return user.get();
     }
+
+    public boolean verifyUser(Long userId) {
+        return userRepository.existsById(userId);
+    }
 }

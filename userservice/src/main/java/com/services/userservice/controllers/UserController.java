@@ -23,7 +23,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/users")
+@RequestMapping("/api/users")
 public class UserController {
     private UserService userService;
 
@@ -85,4 +85,9 @@ public class UserController {
         }
     }
 
+    @GetMapping("/verify/{userId}")
+    public ResponseEntity<Boolean> verifyUser(@PathVariable("userId") Long userId) {
+        boolean exists = userService.verifyUser(userId);
+        return ResponseEntity.ok(exists);
+    }
 }
