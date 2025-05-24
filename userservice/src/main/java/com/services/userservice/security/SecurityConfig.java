@@ -101,9 +101,11 @@ public class SecurityConfig {
                 .securityMatcher("/api/**", "/login/**", "/css/**", "/js/**", "/images/**")
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/api/users/signup", "/login", "/css/**", "/js/**",
-                                "/images/**")
+                        .requestMatchers("/api/users/signup", "/login", "/css/**", "/js/**", "/images/**")
                         .permitAll()
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/manager/**").hasAnyRole("ADMIN", "MANAGER")
+                        .requestMatchers("/api/users/**").hasAnyRole("ADMIN", "MANAGER", "USER")
                         .anyRequest().authenticated())
                 .formLogin(withDefaults())
                 .cors(withDefaults())
