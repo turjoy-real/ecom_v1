@@ -5,17 +5,24 @@ import com.services.userservice.models.Role;
 import lombok.NoArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 
-@JsonDeserialize
-@NoArgsConstructor
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import org.springframework.security.core.GrantedAuthority;
+
 public class CustomGrantedAuthority implements GrantedAuthority {
-    Role role;
+    private final String authority;
+
+    @JsonCreator
+    public CustomGrantedAuthority(@JsonProperty("authority") String authority) {
+        this.authority = authority;
+    }
 
     public CustomGrantedAuthority(Role role) {
-        this.role = role;
+        this.authority = role.getName();
     }
 
     @Override
     public String getAuthority() {
-        return role.getName();
+        return authority;
     }
 }

@@ -9,23 +9,27 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
-    private UserRepo userRepo;
+    private static final Logger logger = LoggerFactory.getLogger(CustomUserDetailsService.class);
+    private final UserRepo userRepo;
 
     public CustomUserDetailsService(UserRepo userRepo) {
         this.userRepo = userRepo;
     }
-    @Override
-    public UserDetails loadUserByUsername(String username)
-            throws UsernameNotFoundException
-    {
-        Optional<User> user = userRepo.findByEmail(username);
-        if(user.isEmpty()) {
-            throw new UsernameNotFoundException("User not found for " +  username);
-        }
 
-        return new CustomUserDetails(user.get());
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        logger.debug("Loading user by username: {}", username);
+        User user = userRepo.findByEmail(username)
+                .orElseThrow(() -> {
+                    logger.error("User not found for email: {}", username);
+                    return new UsernameNotFoundException("User not found for " + username);
+                });
+        logger.debug("Found user: {}", user.getEmail());
+        return new CustomUserDetails(user);
     }
 }

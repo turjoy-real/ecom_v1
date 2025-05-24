@@ -1,10 +1,14 @@
 package com.services.userservice.security.models;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.services.userservice.models.Role;
 import com.services.userservice.models.User;
+
 import lombok.NoArgsConstructor;
+
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -12,31 +16,64 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @JsonDeserialize
 @JsonIgnoreProperties(ignoreUnknown = true)
-@NoArgsConstructor
+// @NoArgsConstructor
 public class CustomUserDetails implements UserDetails {
-    private User user;
+    private final User user;
+    private final List<CustomGrantedAuthority> authorities;
 
-    public void setAuthorities(List<CustomGrantedAuthority> authorities) {
-        this.authorities = authorities;
+    @JsonCreator
+    public CustomUserDetails(
+            @JsonProperty("user") User user,
+            @JsonProperty("authorities") List<CustomGrantedAuthority> authorities) {
+        this.user = user;
+        // this.authorities = authorities;
+        // this.authorities = user.getRoles()
+        // .stream()
+        // .map(role -> new CustomGrantedAuthority(role.getName()))
+        // .collect(Collectors.toList());
+        // this.authorities = new ArrayList<>(user.getRoles())
+        // .stream()
+        // .map(role -> new CustomGrantedAuthority(role.getName()))
+        // .collect(Collectors.toList());
+        this.authorities = user.getRoles().stream()
+                .map(role -> new CustomGrantedAuthority(role.getName()))
+                .collect(Collectors.toList());
     }
-
-    private List<CustomGrantedAuthority> authorities;
 
     public CustomUserDetails(User user) {
         this.user = user;
+        this.authorities = user.getRoles().stream()
+                .map(CustomGrantedAuthority::new)
+                .collect(Collectors.toList());
+    }
+
+    // Accessors for custom fields
+    public String getName() {
+        return user.getName();
+    }
+
+    public boolean isEmailVerified() {
+        return user.isEmailVerified();
+    }
+
+    public User getUser() {
+        return user;
     }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // List<CustomGrantedAuthority> grantedAuthorities = new ArrayList<>();
-        // for(Role role: user.getRoles()) {
-        // grantedAuthorities.add(new CustomGrantedAuthority(role));
-        // }
-        return List.of(new SimpleGrantedAuthority("ROLE_USER"));
-        // return grantedAuthorities;
+        if (authorities != null) {
+            return authorities;
+        }
+        List<CustomGrantedAuthority> grantedAuthorities = new ArrayList<>();
+        for (Role role : user.getRoles()) {
+            grantedAuthorities.add(new CustomGrantedAuthority(role));
+        }
+        return grantedAuthorities;
     }
 
     @Override

@@ -1,11 +1,28 @@
 package com.services.userservice;
 
+import java.util.UUID;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
+import org.springframework.security.oauth2.core.oidc.OidcScopes;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
+import org.springframework.test.annotation.Commit;
 
-@SpringBootTest
+// @SpringBootTest
+@SpringBootTest(properties = {
+        "server.port=9001",
+        "spring.datasource.url=jdbc:mysql://localhost:3306/user_db",
+        "spring.datasource.username=turjoysaha",
+        "spring.datasource.password=Iam@007",
+        "spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver",
+        "spring.jpa.hibernate.ddl-auto=update",
+        "eureka.client.service-url.defaultZone=http://localhost:8761/eureka/"
+})
 class UserserviceApplicationTests {
 
     @Autowired
@@ -15,28 +32,24 @@ class UserserviceApplicationTests {
     void contextLoads() {
     }
 
-//    @Test
-//    @Commit
-//    public void registeredClientRepository() {
-//        RegisteredClient oidcClient = RegisteredClient.withId(UUID.randomUUID().toString())
-//                .clientId("oidc-client")
-//                .clientSecret("{noop}secret")
-//                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-//                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-//                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-//                .redirectUri("https://oauth.pstmn.io/v1/callback")
-//                .postLogoutRedirectUri("https://oauth.pstmn.io/v1/callback")
-//                .scope(OidcScopes.OPENID)
-//                .scope(OidcScopes.PROFILE)
-//                .scope("ADMIN")
-//                .scope("STUDENT")
-//                .scope("MENTOR") // Role
-//                .clientSettings(ClientSettings.builder().requireAuthorizationConsent(true).build())
-//                .build();
-//
-//        registeredClientRepository.save(oidcClient);
-//
-//        //return new InMemoryRegisteredClientRepository(oidcClient);
-//    }
+    @Test
+    @Commit
+    public void registeredClientRepository() {
+        RegisteredClient oidcClient = RegisteredClient.withId(UUID.randomUUID().toString())
+                .clientId("spa-client")
+                .redirectUri("http://127.0.0.1:8080/")
+                .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .scope("read")
+                .scope("write")
+                .scope(OidcScopes.OPENID)
+                .scope(OidcScopes.PROFILE)
+                .clientSettings(ClientSettings.builder().requireProofKey(true).build())
+                .build();
+
+        registeredClientRepository.save(oidcClient);
+
+        // return new InMemoryRegisteredClientRepository(oidcClient);
+    }
 
 }

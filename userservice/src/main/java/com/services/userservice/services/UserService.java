@@ -9,6 +9,7 @@ import com.services.userservice.models.User;
 import com.services.userservice.repositories.TokenRepo;
 import com.services.userservice.repositories.UserRepo;
 
+import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 
 import org.apache.commons.lang3.RandomStringUtils;
@@ -39,7 +40,7 @@ import java.util.Optional;
 
 // Ideally should be an interface
 @Service
-@RequiredArgsConstructor // This is a bean, so we can inject it anywhere we need it.
+@AllArgsConstructor // This is a bean, so we can inject it anywhere we need it.
 public class UserService {
 
     // private final JWTService JWTService;

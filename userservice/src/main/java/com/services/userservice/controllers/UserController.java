@@ -31,15 +31,17 @@ public class UserController {
         this.userService = userService;
     }
 
-    @PostMapping("/login")
-    public ResponseEntity<LoginResponseDto> login(@Valid @RequestBody LoginRequestDto requestDto) {
-        // check if email and password in db
-        // if yes create token (use random string) return token
-        // else throw some error
-        return ResponseEntity.ok()
-                .body(ResponseMappers
-                        .toLoginResponseDto(userService.login(requestDto.getEmail(), requestDto.getPassword())));
-    }
+    // @PostMapping("/login")
+    // public ResponseEntity<LoginResponseDto> login(@Valid @RequestBody
+    // LoginRequestDto requestDto) {
+    // // check if email and password in db
+    // // if yes create token (use random string) return token
+    // // else throw some error
+    // return ResponseEntity.ok()
+    // .body(ResponseMappers
+    // .toLoginResponseDto(userService.login(requestDto.getEmail(),
+    // requestDto.getPassword())));
+    // }
 
     @PostMapping("/signup")
     public ResponseEntity<SignUpResponseDto> signUp(@Valid @RequestBody SignUpRequestDto requestDto) {
