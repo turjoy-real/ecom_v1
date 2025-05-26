@@ -1,11 +1,14 @@
 package com.services.userservice.services;
 
+import com.services.userservice.exceptions.BasicRoleUnregistered;
 import com.services.userservice.exceptions.IncorrectPassword;
 import com.services.userservice.exceptions.UnAuthorized;
 import com.services.userservice.exceptions.UserAlreadyRegistered;
 import com.services.userservice.exceptions.UserNotFound;
+import com.services.userservice.models.Role;
 import com.services.userservice.models.Token;
 import com.services.userservice.models.User;
+import com.services.userservice.repositories.RoleRepository;
 import com.services.userservice.repositories.TokenRepo;
 import com.services.userservice.repositories.UserRepo;
 
@@ -28,11 +31,14 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 // import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenContext;
 // import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenGenerator;
 import org.springframework.stereotype.Service;
+import org.springframework.kafka.core.KafkaTemplate;
 
 // import java.security.Principal;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 // import java.util.Set;
 
@@ -47,6 +53,8 @@ public class UserService {
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
     private final UserRepo userRepository;
     private final TokenRepo tokenRepository;
+    private final RoleRepository roleRepository;
+    // private final KafkaTemplate<String, String> kafkaTemplate;
     // private final AuthenticationManager authManager;
 
     // private final AuthenticationManager authenticationManager;
@@ -67,18 +75,25 @@ public class UserService {
     // }
     public User signUp(String name, String email, String password) throws UserAlreadyRegistered {
         // Validation
-
         if (userRepository.findByEmail(email).isPresent()) {
             throw new UserAlreadyRegistered("User is already registered");
         }
 
-        User u = new User();
-        u.setEmail(email);
-        u.setName(name);
-        u.setHashedPassword(bCryptPasswordEncoder.encode(password));
+        // Fetch default role
+        Role role = roleRepository.findByName("USER")
+                .orElseThrow(
+                        () -> new BasicRoleUnregistered("Couldn't assign role to new user. Please contact developer."));
 
-        User user = userRepository.save(u);
-        // print
+        // Create user
+        User user = new User();
+        user.setEmail(email);
+        user.setName(name);
+        user.setHashedPassword(bCryptPasswordEncoder.encode(password));
+        user.setRoles(List.of(role)); // ✅ Set roles directly
+
+        // Save
+        user = userRepository.save(user);
+
         System.err.println("User data: ...");
         System.err.println(user);
         return user;
@@ -196,4 +211,29 @@ public class UserService {
     public boolean verifyUser(Long userId) {
         return userRepository.existsById(userId);
     }
+
+    // public void resendVerificationEmail(String email) {
+    // Optional<User> userOptional = userRepository.findByEmail(email);
+    // if (userOptional.isEmpty()) {
+    // throw new UserNotFound("User not found");
+    // }
+
+    // User user = userOptional.get();
+    // if (user.isEmailVerified()) {
+    // throw new RuntimeException("Email is already verified");
+    // }
+
+    // // Send message to Kafka topic
+    // kafkaTemplate.send("email-verification", email);
+    // }
+
+    // public void forgotPassword(String email) {
+    // Optional<User> userOptional = userRepository.findByEmail(email);
+    // if (userOptional.isEmpty()) {
+    // throw new UserNotFound("User not found");
+    // }
+
+    // // Send message to Kafka topic for password reset
+    // kafkaTemplate.send("password-reset", email);
+    // }
 }

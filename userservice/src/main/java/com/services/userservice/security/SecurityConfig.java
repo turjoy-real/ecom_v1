@@ -25,6 +25,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.jackson2.SecurityJackson2Modules;
@@ -66,7 +67,7 @@ import java.util.stream.Collectors;
 import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
-@EnableWebSecurity
+// @EnableWebSecurity
 public class SecurityConfig {
 
     @Bean
@@ -98,14 +99,11 @@ public class SecurityConfig {
     public SecurityFilterChain clientAppSecurityFilterChain(HttpSecurity http)
             throws Exception {
         return http
-                .securityMatcher("/api/**", "/login/**", "/css/**", "/js/**", "/images/**")
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/api/users/signup", "/login", "/css/**", "/js/**", "/images/**")
+                        .requestMatchers("/api/users/signup",
+                                "/api/roles/**", "/html/**", "/api/users/open/**")
                         .permitAll()
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/manager/**").hasAnyRole("ADMIN", "MANAGER")
-                        .requestMatchers("/api/users/**").hasAnyRole("ADMIN", "MANAGER", "USER")
                         .anyRequest().authenticated())
                 .formLogin(withDefaults())
                 .cors(withDefaults())
@@ -132,9 +130,9 @@ public class SecurityConfig {
                     Set<String> roles = AuthorityUtils.authorityListToSet(context.getPrincipal().getAuthorities())
                             .stream()
                             .map(c -> c.replaceFirst("^ROLE_", ""))
-                            .collect(Collectors.collectingAndThen(Collectors.toSet(), Collections::unmodifiableSet));
+                            .collect(Collectors.collectingAndThen(Collectors.toSet(),
+                                    Collections::unmodifiableSet));
                     claims.put("roles", roles);
-                    claims.put("ScalerRole", "ADMIN");
                 });
             }
         };

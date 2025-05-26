@@ -3,6 +3,9 @@ package com.services.notificationservice.adapters;
 import java.io.File;
 import java.util.List;
 
+import org.springframework.stereotype.Component;
+
+@Component
 public class PushNotificationAdapter implements MessegingAdapter {
 
     @Override
@@ -15,5 +18,5 @@ public class PushNotificationAdapter implements MessegingAdapter {
             System.out.println("Attachments: " + attachment);
         }
     }
-    
+
 }

@@ -1,38 +1,43 @@
 package com.services.userservice.services;
 
 import com.services.userservice.models.Role;
-import com.services.userservice.models.UserRole;
 import com.services.userservice.repositories.RoleRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Arrays;
 import java.util.List;
 
 @Service
 public class RoleService {
+    private final RoleRepository roleRepository;
 
-    @Autowired
-    private RoleRepository roleRepository;
+    public RoleService(RoleRepository roleRepository) {
+        this.roleRepository = roleRepository;
+    }
 
     @Transactional
-    public void initializeRoles() {
-        Arrays.stream(UserRole.values())
-                .filter(role -> !roleRepository.existsByName(role))
-                .forEach(role -> {
-                    Role newRole = new Role();
-                    newRole.setName(role);
-                    roleRepository.save(newRole);
-                });
+    public Role createRole(String name) {
+        if (roleRepository.existsByName(name)) {
+            throw new IllegalArgumentException("Role with name " + name + " already exists");
+        }
+
+        Role role = new Role();
+        role.setName(name);
+        return roleRepository.save(role);
+    }
+
+    public Role getRoleByName(String name) {
+        return roleRepository.findByName(name)
+                .orElseThrow(() -> new IllegalArgumentException("Role with name " + name + " not found"));
     }
 
     public List<Role> getAllRoles() {
         return roleRepository.findAll();
     }
 
-    public Role getRoleByName(UserRole name) {
-        return roleRepository.findByName(name)
-                .orElseThrow(() -> new RuntimeException("Role not found: " + name));
+    @Transactional
+    public void deleteRole(String name) {
+        Role role = getRoleByName(name);
+        roleRepository.delete(role);
     }
 }

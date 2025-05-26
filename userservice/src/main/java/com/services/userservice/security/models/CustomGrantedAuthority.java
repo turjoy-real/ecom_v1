@@ -1,14 +1,13 @@
 package com.services.userservice.security.models;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.services.userservice.models.Role;
-import lombok.NoArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.springframework.security.core.GrantedAuthority;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
+@JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, include = JsonTypeInfo.As.PROPERTY, property = "@class")
 public class CustomGrantedAuthority implements GrantedAuthority {
     private final String authority;
 

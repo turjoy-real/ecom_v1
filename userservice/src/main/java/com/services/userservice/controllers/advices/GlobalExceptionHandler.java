@@ -10,6 +10,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import com.services.userservice.exceptions.BasicRoleUnregistered;
 import com.services.userservice.exceptions.IncorrectPassword;
 import com.services.userservice.exceptions.UnAuthorized;
 import com.services.userservice.exceptions.UserAlreadyRegistered;
@@ -53,6 +54,15 @@ public class GlobalExceptionHandler {
         error.setMessage(ex.getMessage());
         error.setStatusCode(HttpStatus.UNAUTHORIZED.value());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
+
+    @ExceptionHandler(BasicRoleUnregistered.class)
+    public ResponseEntity<ErrorResponse> handleIncorrectRole(BasicRoleUnregistered ex) {
+        ErrorResponse error = new ErrorResponse();
+        error.setError("InvalidRole");
+        error.setMessage(ex.getMessage());
+        error.setStatusCode(HttpStatus.UNPROCESSABLE_ENTITY.value());
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(error);
     }
 
     @ExceptionHandler(Exception.class)
