@@ -3,8 +3,6 @@ package com.services.productservice.models;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.io.Serializable;
-
 @Entity
 @Table(name = "products")
 @Getter
@@ -12,7 +10,7 @@ import java.io.Serializable;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Product extends BaseModel implements Serializable {
+public class Product extends BaseModel {
     private static final long serialVersionUID = 1L;
     private String name;
     private String description;

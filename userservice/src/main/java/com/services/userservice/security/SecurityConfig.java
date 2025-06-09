@@ -102,7 +102,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/api/users/signup",
-                                "/api/roles/**", "/html/**", "/api/users/open/**")
+                                "/api/roles/**", "/html/**", "/api/users/open/**", "/actuator/**")
                         .permitAll()
                         .anyRequest().authenticated())
                 .formLogin(withDefaults())

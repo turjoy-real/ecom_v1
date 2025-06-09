@@ -1,7 +1,5 @@
 package com.services.productservice.models;
 
-import java.io.Serializable;
-
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.*;
@@ -14,7 +12,7 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 @ToString
-public class Category extends BaseModel implements Serializable {
+public class Category extends BaseModel {
     private static final long serialVersionUID = 1L;
     String name;
 }
