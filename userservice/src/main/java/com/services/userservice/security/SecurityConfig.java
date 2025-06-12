@@ -42,6 +42,7 @@ import org.springframework.security.oauth2.server.authorization.config.annotatio
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
+import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.security.oauth2.server.authorization.token.DelegatingOAuth2TokenGenerator;
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
 import org.springframework.security.oauth2.server.authorization.token.JwtGenerator;
@@ -59,6 +60,7 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.Set;
 import java.util.UUID;
@@ -100,11 +102,25 @@ public class SecurityConfig {
             throws Exception {
         return http
                 .csrf(csrf -> csrf.disable())
-                .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/api/users/signup",
-                                "/api/roles/**", "/html/**", "/api/users/open/**", "/actuator/**")
+                // .authorizeHttpRequests(authorize -> authorize
+                // .requestMatchers("/api/users/signup",
+                // "/api/roles/**", "/html/**", "/api/users/open/**", "/actuator/**")
+                // .permitAll()
+                // .anyRequest().authenticated())
+                // .formLogin(withDefaults())
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/", // allow base URL
+                                "/index.html", // allow main HTML
+                                "/script.js",
+                                "/login", "/login/**", "/api/users/open/**", "/api/users/signup", "/html/**",
+                                "/actuator/**")
                         .permitAll()
                         .anyRequest().authenticated())
+                // .formLogin(form -> form
+                // .loginPage("/login") // GET /login -> controller renders Thymeleaf page
+                // .loginProcessingUrl("/login") // POST /login -> handled by Spring Security
+                // .defaultSuccessUrl("/", true)
+                // .permitAll())
                 .formLogin(withDefaults())
                 .cors(withDefaults())
                 .build();
@@ -212,18 +228,57 @@ public class SecurityConfig {
             }
 
             if (existing1 == null) {
+                // RegisteredClient registeredClient1 =
+                // RegisteredClient.withId(UUID.randomUUID().toString())
+                // .clientId("spa-client")
+                // .redirectUri("http://127.0.0.1:8080/")
+                // .redirectUri("http://127.0.0.1:8080/")
+                // .redirectUri("http://127.0.0.1:3000/callback")
+                // .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+                // .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                // .scope("read")
+                // .scope("write")
+                // .scope(OidcScopes.OPENID)
+                // .scope(OidcScopes.PROFILE)
+                // .clientSettings(ClientSettings.builder().requireProofKey(true).build())
+                // .build();
+
+                // RegisteredClient registeredClient1 =
+                // RegisteredClient.withId(UUID.randomUUID().toString())
+                // .clientId("spa-internal")
+                // .redirectUri("http://localhost:9001/html/callback.html") // hosted in same
+                // server
+                // .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                // .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+                // .scope("read")
+                // .scope("write")
+                // .scope(OidcScopes.OPENID)
+                // .scope(OidcScopes.PROFILE)
+                // .clientSettings(ClientSettings.builder()
+                // .requireProofKey(true)
+                // .build())
+                // .build();
+
                 RegisteredClient registeredClient1 = RegisteredClient.withId(UUID.randomUUID().toString())
                         .clientId("spa-client")
-                        .redirectUri("http://127.0.0.1:8080/")
-                        .redirectUri("http://localhost:8080/")
-                        .redirectUri("http://localhost:3000/callback")
-                        .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+                        .redirectUri("http://localhost:9001/") // hosted inside the auth server
                         .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                        .scope("read")
-                        .scope("write")
+                        .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN) // ✅ must allow this
+                        .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
                         .scope(OidcScopes.OPENID)
                         .scope(OidcScopes.PROFILE)
-                        .clientSettings(ClientSettings.builder().requireProofKey(true).build())
+                        .scope("read")
+                        .scope("write")
+                        .scope("offline_access") // ✅ for refresh token
+                        .clientSettings(ClientSettings.builder()
+                                .requireProofKey(true) // PKCE
+                                .requireAuthorizationConsent(false)
+                                .build())
+                        .tokenSettings(TokenSettings.builder()
+                                .accessTokenTimeToLive(Duration.ofMinutes(15))
+                                .refreshTokenTimeToLive(Duration.ofDays(30))
+                                .reuseRefreshTokens(false) // new refresh token each time
+                                .build())
                         .build();
 
                 repository.save(registeredClient1);

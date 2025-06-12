@@ -1,19 +1,47 @@
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="https://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org">
   <head>
-    <title>Spring Security Example</title>
+    <title>Login</title>
   </head>
   <body>
-    <div th:if="${param.error}">Invalid username and password.</div>
-    <div th:if="${param.logout}">You have been logged out.</div>
+    <h2>Login</h2>
+
     <form th:action="@{/login}" method="post">
-      <div>
-        <label> User Name : <input type="text" name="username" /> </label>
-      </div>
-      <div>
-        <label> Password: <input type="password" name="password" /> </label>
-      </div>
-      <div><input type="submit" value="Sign In" /></div>
+      <label>Email:</label>
+      <input type="text" name="username" required /><br /><br />
+
+      <label>Password:</label>
+      <input type="password" name="password" required /><br /><br />
+
+      <button type="submit">Login</button>
     </form>
+
+    <p>
+      <a href="#" onclick="handleForgotPassword()">Forgot Password?</a>
+    </p>
+
+    <script>
+      function handleForgotPassword() {
+        const email = prompt("Enter your email:");
+        if (email) {
+          fetch(
+            `http://localhost:9001/api/users/open/request-reset?email=${encodeURIComponent(
+              email
+            )}`,
+            {
+              method: "GET",
+            }
+          )
+            .then((res) => {
+              if (res.ok) {
+                alert("Reset link sent to email.");
+              } else {
+                alert("Failed to send reset link.");
+              }
+            })
+            .catch(() => alert("Something went wrong."));
+        }
+      }
+    </script>
   </body>
 </html>
