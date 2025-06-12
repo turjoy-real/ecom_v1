@@ -25,7 +25,6 @@ public class CartServiceImplementation implements CartService {
     private final ProductServiceClient productServiceClient;
     private final UserServiceClient userServiceClient;
 
-    @Autowired
     public CartServiceImplementation(CartRepo cartRepository,
             ProductServiceClient productServiceClient,
             UserServiceClient userServiceClient) {
@@ -67,7 +66,6 @@ public class CartServiceImplementation implements CartService {
             if (!productServiceClient.verifyStock(cartItemDTO.getProductId(), newQuantity)) {
                 throw new InsufficientStockException("Insufficient stock for product: " + cartItemDTO.getProductId());
             }
-
             existingItem.setQuantity(newQuantity);
             cartRepository.save(existingItem);
         } else {

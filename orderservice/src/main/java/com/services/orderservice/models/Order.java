@@ -29,7 +29,8 @@ public class Order {
     private LocalDateTime orderDate;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private String shippingAddress;
+    // private String shippingAddress;
+    private String addressId;
 
     @Column(nullable = true)
     private String paymentMethod;

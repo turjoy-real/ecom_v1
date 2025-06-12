@@ -1,6 +1,5 @@
 package com.services.orderservice.services;
 
-import com.services.orderservice.dtos.OrderItemRequest;
 import com.services.orderservice.dtos.OrderRequest;
 import com.services.orderservice.dtos.OrderResponse;
 import com.services.orderservice.exceptions.OrderNotFoundException;
@@ -40,7 +39,7 @@ public class OrderServiceImpl implements OrderService {
         order.setStatus(OrderStatus.CREATED);
         order.setPaymentStatus(PaymentStatus.PENDING);
         order.setOrderDate(LocalDateTime.now());
-        order.setShippingAddress(request.getShippingAddress());
+        order.setAddressId(request.getShippingAddressId());
 
         // Create and validate order items
         List<OrderItem> orderItems = request.getItems().stream()
@@ -165,7 +164,7 @@ public class OrderServiceImpl implements OrderService {
         response.setPaymentStatus(order.getPaymentStatus());
         response.setOrderDate(order.getOrderDate());
         response.setCreatedAt(order.getCreatedAt());
-        response.setShippingAddress(order.getShippingAddress());
+        response.setShippingAddressId(order.getAddressId());
 
         List<OrderResponse.OrderItemResponse> itemResponses = order.getItems().stream()
                 .map(item -> {

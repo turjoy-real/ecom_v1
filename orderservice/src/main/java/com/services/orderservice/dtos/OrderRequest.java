@@ -7,5 +7,5 @@ import java.util.List;
 public class OrderRequest {
     private String userId;
     private List<OrderItemRequest> items;
-    private String shippingAddress;
+    private String shippingAddressId;
 }

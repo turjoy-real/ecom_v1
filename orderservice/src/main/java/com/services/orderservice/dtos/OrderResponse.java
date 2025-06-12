@@ -15,7 +15,7 @@ public class OrderResponse {
     private PaymentStatus paymentStatus;
     private LocalDateTime orderDate;
     private LocalDateTime createdAt;
-    private String shippingAddress;
+    private String shippingAddressId;
     private String paymentMethod;
 
     @Data
