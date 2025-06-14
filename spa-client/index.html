@@ -2,10 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Basic SPA Client</title>
-    <!-- Include js-pkce library from CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/js-pkce@2.0.0/dist/browser.js"></script>
+    <title>SPA Client</title>
+    <!-- Load js-pkce library FIRST -->
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/js-pkce@2.0.0/dist/pkce.umd.js"
+    ></script>
+    <!-- Load your script AFTER the library -->
+    <script defer src="script.js"></script>
   </head>
   <body>
     <h1>Basic SPA Client</h1>
@@ -15,7 +19,5 @@
     <button id="google-login-button">Login with Google</button>
     <button id="github-login-button">Login with GitHub</button>
     <div id="result"></div>
-
-    <script src="script.js"></script>
   </body>
 </html>

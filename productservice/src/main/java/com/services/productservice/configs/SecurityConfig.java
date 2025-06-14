@@ -14,46 +14,41 @@ import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
 public class SecurityConfig {
-    @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}")
-    String issuerUri;
+        @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}")
+        String issuerUri;
 
-    @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http
-                // .securityMatcher("/api/**")
-                // .csrf(csrf -> csrf.disable())
-                // .authorizeHttpRequests(authorize -> authorize
-                // .requestMatchers("/api/products/**")
-                // .permitAll()
-                // .anyRequest().authenticated())
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/v3/api-docs/**",
-                                "/swagger-ui/**",
-                                "/swagger-ui.html")
-                        .permitAll()
+        @Bean
+        SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+                return http
+                                .authorizeHttpRequests(auth -> auth
+                                                .requestMatchers(
+                                                                "/v3/api-docs/**",
+                                                                "/swagger-ui/**",
+                                                                "/swagger-ui.html")
+                                                .permitAll()
 
-                        .requestMatchers(HttpMethod.GET, "/api/products").hasRole("USER")
-                        // .permitAll()
-                        .anyRequest().authenticated())
-                .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(jwt -> jwt
-                                .decoder(JwtDecoders.fromIssuerLocation(issuerUri))
-                                .jwtAuthenticationConverter(jwtAuthenticationConverter())))
-                .cors(withDefaults())
-                .build();
-    }
+                                                .requestMatchers(HttpMethod.GET, "/api/products")
+                                                .hasAnyRole("USER", "ADMIN") // 👈 allow all users to read products
+                                                .anyRequest().authenticated())
+                                .oauth2ResourceServer(oauth2 -> oauth2
+                                                .jwt(jwt -> jwt
+                                                                .decoder(JwtDecoders.fromIssuerLocation(issuerUri))
+                                                                .jwtAuthenticationConverter(
+                                                                                jwtAuthenticationConverter())))
+                                .cors(withDefaults())
+                                .build();
+        }
 
-    @Bean
-    public JwtAuthenticationConverter jwtAuthenticationConverter() {
-        JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
-        grantedAuthoritiesConverter.setAuthoritiesClaimName("roles"); // 👈 matches your token claim
-        grantedAuthoritiesConverter.setAuthorityPrefix("ROLE_"); // 👈 required prefix
+        @Bean
+        public JwtAuthenticationConverter jwtAuthenticationConverter() {
+                JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
+                grantedAuthoritiesConverter.setAuthoritiesClaimName("roles"); // 👈 matches your token claim
+                grantedAuthoritiesConverter.setAuthorityPrefix("ROLE_"); // 👈 required prefix
 
-        JwtAuthenticationConverter authenticationConverter = new JwtAuthenticationConverter();
-        authenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
+                JwtAuthenticationConverter authenticationConverter = new JwtAuthenticationConverter();
+                authenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
 
-        return authenticationConverter;
-    }
+                return authenticationConverter;
+        }
 
 }

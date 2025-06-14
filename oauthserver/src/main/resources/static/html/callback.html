@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Callback</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 2rem;
+      }
+      #result {
+        margin-top: 1rem;
+        font-weight: bold;
+        color: #2c3e50;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>OAuth2 Login Result</h2>
+    <div id="result">Processing...</div>
+
+    <script>
+      const clientId = "spa-client";
+      const redirectUri = "http://localhost:9001/html/callback.html";
+      const tokenEndpoint = "http://localhost:9001/oauth2/token";
+
+      const resultDiv = document.getElementById("result");
+
+      async function exchangeCodeForToken() {
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get("code");
+        const returnedState = params.get("state");
+        const expectedState = sessionStorage.getItem("oauth_state");
+
+        if (!code || !returnedState || returnedState !== expectedState) {
+          resultDiv.textContent =
+            "Invalid state or code. Possible CSRF or missing parameters.";
+          return;
+        }
+
+        const codeVerifier = sessionStorage.getItem("code_verifier");
+        if (!codeVerifier) {
+          resultDiv.textContent = "Missing code_verifier in sessionStorage.";
+          return;
+        }
+
+        const body = new URLSearchParams();
+        body.append("grant_type", "authorization_code");
+        body.append("code", code);
+        body.append("redirect_uri", redirectUri);
+        body.append("client_id", clientId);
+        body.append("code_verifier", codeVerifier);
+
+        try {
+          const response = await fetch(tokenEndpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: body,
+          });
+
+          if (!response.ok) {
+            throw new Error("Token exchange failed");
+          }
+
+          const tokenData = await response.json();
+          localStorage.setItem("access_token", tokenData.access_token || "");
+          localStorage.setItem("refresh_token", tokenData.refresh_token || "");
+          localStorage.setItem("id_token", tokenData.id_token || "");
+
+          resultDiv.textContent =
+            "✅ Access Token received and stored successfully!";
+          console.log("Access Token:", tokenData.access_token);
+        } catch (err) {
+          console.error(err);
+          resultDiv.textContent =
+            "❌ Token exchange failed. Check console for details.";
+        } finally {
+          // Clean up sensitive items
+          sessionStorage.removeItem("code_verifier");
+          sessionStorage.removeItem("oauth_state");
+
+          // Optional: remove code from URL
+          history.replaceState({}, document.title, window.location.pathname);
+        }
+      }
+
+      window.addEventListener("load", exchangeCodeForToken);
+    </script>
+  </body>
+</html>

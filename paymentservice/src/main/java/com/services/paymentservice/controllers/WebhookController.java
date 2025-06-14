@@ -1,7 +1,5 @@
 package com.services.paymentservice.controllers;
 
-import com.razorpay.RazorpayClient;
-import com.razorpay.RazorpayException;
 import com.razorpay.Utils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;

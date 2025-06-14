@@ -6,6 +6,8 @@ import com.services.userservice.services.RoleService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -41,5 +43,11 @@ public class RoleController {
     public ResponseEntity<Void> deleteRole(@PathVariable String name) {
         roleService.deleteRole(name);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/debug")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> debug(Authentication authentication) {
+        return ResponseEntity.ok(authentication.getAuthorities());
     }
 }

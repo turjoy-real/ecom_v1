@@ -15,6 +15,7 @@ import com.services.userservice.exceptions.IncorrectPassword;
 import com.services.userservice.exceptions.UnAuthorized;
 import com.services.userservice.exceptions.UserAlreadyRegistered;
 import com.services.userservice.exceptions.UserNotFound;
+import com.services.userservice.exceptions.TokenNotFound;
 import com.services.userservice.models.ErrorResponse;
 
 @RestControllerAdvice
@@ -63,6 +64,15 @@ public class GlobalExceptionHandler {
         error.setMessage(ex.getMessage());
         error.setStatusCode(HttpStatus.UNPROCESSABLE_ENTITY.value());
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(error);
+    }
+
+    @ExceptionHandler(TokenNotFound.class)
+    public ResponseEntity<ErrorResponse> handleTokenNotPresent(TokenNotFound ex) {
+        ErrorResponse error = new ErrorResponse();
+        error.setError("TokenNotFound");
+        error.setMessage(ex.getMessage());
+        error.setStatusCode(HttpStatus.UNAUTHORIZED.value());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
     }
 
     @ExceptionHandler(Exception.class)
