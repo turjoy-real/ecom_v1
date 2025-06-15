@@ -1,8 +1,8 @@
 package com.services.oauthserver.services;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,13 +16,14 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Service
+@EnableScheduling
 public class EmailVerificationService {
 
     private final EmailVerificationTokenRepository tokenRepo;
     private final UserRepo userRepo;
     private final EmailEventProducer emailEventProducer;
 
-    @Value("${app.frontend.base-url:http://http://localhost:9001}")
+    @Value("${app.frontend.base-url:http://localhost:9001}")
     private String baseUrl;
 
     public EmailVerificationService(EmailVerificationTokenRepository tokenRepo,
@@ -45,22 +46,18 @@ public class EmailVerificationService {
 
     @Transactional
     public void sendVerificationEmail(User user) {
-        Optional<EmailVerificationToken> existingTokenOpt = tokenRepo.findByUser(user);
+        // Delete any existing tokens for this user
+        tokenRepo.deleteByUser(user);
 
-        EmailVerificationToken tokenToUse;
+        // Generate new token
+        String token = UUID.randomUUID().toString();
+        EmailVerificationToken verificationToken = new EmailVerificationToken(
+                token,
+                user,
+                LocalDateTime.now().plusHours(4)); // 4 hours expiration
+        tokenRepo.save(verificationToken);
 
-        if (existingTokenOpt.isPresent()) {
-            tokenToUse = existingTokenOpt.get();
-        } else {
-            String token = UUID.randomUUID().toString();
-            tokenToUse = new EmailVerificationToken(
-                    token,
-                    user,
-                    LocalDateTime.now().plusDays(1));
-            tokenRepo.save(tokenToUse);
-        }
-
-        String link = baseUrl + "/api/users/open/verify-email?token=" + tokenToUse.getToken();
+        String link = baseUrl + "/api/users/open/verify-email?token=" + verificationToken.getToken();
         emailEventProducer.sendVerificationEmail(user.getEmail(), link);
     }
 
@@ -81,5 +78,11 @@ public class EmailVerificationService {
         userRepo.save(user);
         tokenRepo.delete(verificationToken);
         return true;
+    }
+
+    @Scheduled(cron = "0 0 * * * *") // Run every hour
+    @Transactional
+    public void cleanupExpiredTokens() {
+        tokenRepo.deleteAllByExpiryBefore(LocalDateTime.now());
     }
 }
