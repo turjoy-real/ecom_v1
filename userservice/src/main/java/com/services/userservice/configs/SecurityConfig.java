@@ -26,8 +26,8 @@ public class SecurityConfig {
                                                                 "/swagger-ui.html")
                                                 .permitAll()
 
-                                                .requestMatchers("/api/role/**",
-                                                                "/api/role")
+                                                .requestMatchers("/api/roles/**",
+                                                                "/api/roles", "/api/profile/**")
                                                 .hasRole("ADMIN") // 👈 allow all users to read products
                                                 .anyRequest().authenticated())
                                 .oauth2ResourceServer(oauth2 -> oauth2

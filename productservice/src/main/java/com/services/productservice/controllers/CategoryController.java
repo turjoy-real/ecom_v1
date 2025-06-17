@@ -3,7 +3,6 @@ package com.services.productservice.controllers;
 import com.services.productservice.models.Category;
 import com.services.productservice.repositories.CategoryRepository;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;

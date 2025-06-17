@@ -1,6 +1,7 @@
 package com.services.userservice.controllers;
 
 import com.services.userservice.dtos.CreateRoleRequestDto;
+import com.services.userservice.dtos.UserRoleRequest;
 import com.services.userservice.models.Role;
 import com.services.userservice.services.RoleService;
 import jakarta.validation.Valid;
@@ -14,6 +15,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/roles")
+@PreAuthorize("hasRole('ADMIN')")
 public class RoleController {
     private final RoleService roleService;
 
@@ -45,9 +47,28 @@ public class RoleController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/debug")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<?> debug(Authentication authentication) {
-        return ResponseEntity.ok(authentication.getAuthorities());
+    @PostMapping("/user/add")
+    public ResponseEntity<Void> addRoleToUser(@Valid @RequestBody UserRoleRequest request) {
+        roleService.addRoleToUser(request.getUserEmail(), request.getRoleName());
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/user/remove")
+    public ResponseEntity<Void> removeRoleFromUser(@Valid @RequestBody UserRoleRequest request) {
+        roleService.removeRoleFromUser(request.getUserEmail(), request.getRoleName());
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/user/{email}")
+    public ResponseEntity<List<Role>> getUserRoles(@PathVariable String email) {
+        List<Role> roles = roleService.getUserRoles(email);
+        return ResponseEntity.ok(roles);
+    }
+
+    @GetMapping("/current")
+    public ResponseEntity<List<Role>> getCurrentUserRoles(Authentication authentication) {
+        String email = authentication.getName();
+        List<Role> roles = roleService.getUserRoles(email);
+        return ResponseEntity.ok(roles);
     }
 }

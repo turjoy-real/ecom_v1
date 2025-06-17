@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.services.userservice.exceptions.BasicRoleUnregistered;
-import com.services.userservice.exceptions.IncorrectPassword;
+import com.services.userservice.exceptions.RoleNotFound;
 import com.services.userservice.exceptions.UnAuthorized;
 import com.services.userservice.exceptions.UserAlreadyRegistered;
 import com.services.userservice.exceptions.UserNotFound;
@@ -39,15 +39,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
-    @ExceptionHandler(IncorrectPassword.class)
-    public ResponseEntity<ErrorResponse> handleIncorrectPassword(IncorrectPassword ex) {
-        ErrorResponse error = new ErrorResponse();
-        error.setError("IncorrectPassword");
-        error.setMessage(ex.getMessage());
-        error.setStatusCode(HttpStatus.UNAUTHORIZED.value());
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
-    }
-
     @ExceptionHandler(UnAuthorized.class)
     public ResponseEntity<ErrorResponse> handleIncorrectToken(UnAuthorized ex) {
         ErrorResponse error = new ErrorResponse();
@@ -73,6 +64,15 @@ public class GlobalExceptionHandler {
         error.setMessage(ex.getMessage());
         error.setStatusCode(HttpStatus.UNAUTHORIZED.value());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
+
+    @ExceptionHandler(RoleNotFound.class)
+    public ResponseEntity<ErrorResponse> handleRoleNotFound(RoleNotFound ex) {
+        ErrorResponse error = new ErrorResponse();
+        error.setError("RoleNotFound");
+        error.setMessage(ex.getMessage());
+        error.setStatusCode(HttpStatus.NOT_FOUND.value());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
     @ExceptionHandler(Exception.class)

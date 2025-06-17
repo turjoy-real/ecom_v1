@@ -6,15 +6,15 @@
 
 // // OAuth 2.0 config
 // const clientId = "spa-client";
-// const redirectUri = "http://localhost:9001/html/callback.html";
+// const redirectUri = "http://localhost:9001/";
 // const authorizationEndpoint = "http://localhost:9001/oauth2/authorize";
 // const tokenEndpoint = "http://localhost:9001/oauth2/token";
 // const resourceServerEndpoint = "http://localhost:8091/api/home";
 // const scope = "openid profile read write offline_access";
 
 // let accessToken = null;
-// let idleTimer = null;
-// const IDLE_TIMEOUT_MS = 4 * 60 * 1000; // 4 minutes
+// let refreshInterval = null;
+// let idleTimeout = null;
 
 // // PKCE utils
 // async function generateCodeVerifier() {
@@ -42,7 +42,7 @@
 //     .join("");
 // }
 
-// // Auth Flow
+// // Build auth URL
 // async function initiateAuthFlow() {
 //   const codeVerifier = await generateCodeVerifier();
 //   const codeChallenge = await generateCodeChallenge(codeVerifier);
@@ -60,9 +60,12 @@
 //     `&code_challenge_method=S256` +
 //     `&state=${encodeURIComponent(state)}`;
 
+//   console.log("🔍 Authorization URL:", authUrl);
+
 //   window.location.href = authUrl;
 // }
 
+// // Exchange code for token
 // async function handleAuthorizationResponse() {
 //   const params = new URLSearchParams(window.location.search);
 //   if (params.has("code")) {
@@ -76,7 +79,6 @@
 //     }
 
 //     const codeVerifier = sessionStorage.getItem("code_verifier");
-
 //     const body = new URLSearchParams();
 //     body.append("grant_type", "authorization_code");
 //     body.append("code", code);
@@ -95,29 +97,33 @@
 
 //       const tokenData = await response.json();
 //       accessToken = tokenData.access_token;
-//       localStorage.setItem("accessToken", tokenData.access_token || "");
-//       localStorage.setItem("refreshToken", tokenData.refresh_token || "");
-//       localStorage.setItem("idToken", tokenData.id_token || "");
-//       localStorage.setItem("alldata", JSON.stringify(tokenData));
+//       localStorage.setItem("access_token", tokenData.access_token || "");
+//       tokenData.refresh_token &&
+//         localStorage.setItem("refresh_token", tokenData.refresh_token);
+//       localStorage.setItem("id_token", tokenData.id_token || "");
+
+//       localStorage.allData = JSON.stringify(tokenData);
+
 //       resultDiv.innerText = "Access token received!";
 //       updateUI();
+//       startRefreshTimer();
 //       resetIdleTimer();
+
 //       history.replaceState({}, document.title, window.location.pathname);
 //     } catch (err) {
 //       console.error(err);
 //       resultDiv.innerText = "Token exchange failed";
+//     } finally {
+//       sessionStorage.removeItem("code_verifier");
+//       sessionStorage.removeItem("oauth_state");
 //     }
 //   }
 // }
 
-// // Refresh token logic
+// // Refresh token
 // async function refreshAccessToken() {
-//   const refreshToken = localStorage.getItem("refreshToken");
-//   if (!refreshToken) {
-//     resultDiv.innerText = "Session expired. Please login again.";
-//     logout();
-//     return;
-//   }
+//   const refreshToken = localStorage.getItem("refresh_token");
+//   if (!refreshToken) return;
 
 //   const body = new URLSearchParams();
 //   body.append("grant_type", "refresh_token");
@@ -131,26 +137,41 @@
 //       body,
 //     });
 
-//     if (!response.ok) throw new Error("Refresh failed");
+//     if (!response.ok) throw new Error("Refresh token failed");
 
 //     const tokenData = await response.json();
 //     accessToken = tokenData.access_token;
-//     localStorage.setItem("accessToken", tokenData.access_token || "");
+
+//     localStorage.setItem("access_token", tokenData.access_token || "");
+//     localStorage.setItem("id_token", tokenData.id_token || "");
 //     if (tokenData.refresh_token) {
-//       localStorage.setItem("refreshToken", tokenData.refresh_token);
+//       localStorage.setItem("refresh_token", tokenData.refresh_token);
 //     }
 
-//     resultDiv.innerText = "Token refreshed silently";
 //     updateUI();
-//     resetIdleTimer();
+//     console.log("🔁 Token silently refreshed");
 //   } catch (err) {
-//     console.error(err);
-//     resultDiv.innerText = "Unable to refresh. Please login again.";
+//     console.error("🔒 Refresh failed", err);
 //     logout();
 //   }
 // }
 
-// // UI
+// // Timer for refresh
+// function startRefreshTimer() {
+//   clearInterval(refreshInterval);
+//   refreshInterval = setInterval(refreshAccessToken, 4 * 60 * 1000); // every 4 min
+// }
+
+// // Idle timer: logout if inactive for 10 minutes
+// function resetIdleTimer() {
+//   clearTimeout(idleTimeout);
+//   idleTimeout = setTimeout(() => {
+//     resultDiv.innerText = "Logged out due to inactivity.";
+//     logout();
+//   }, 10 * 60 * 1000);
+// }
+
+// // Update UI
 // function updateUI() {
 //   if (accessToken) {
 //     loginButton.disabled = true;
@@ -161,7 +182,18 @@
 //   }
 // }
 
-// // API Call
+// // Logout
+// function logout() {
+//   localStorage.removeItem("access_token");
+//   localStorage.removeItem("refresh_token");
+//   localStorage.removeItem("id_token");
+//   accessToken = null;
+//   clearInterval(refreshInterval);
+//   clearTimeout(idleTimeout);
+//   updateUI();
+// }
+
+// // Call resource
 // callResourceButton.addEventListener("click", async () => {
 //   try {
 //     resultDiv.innerText = "Calling API...";
@@ -178,41 +210,26 @@
 //   }
 // });
 
-// // Logout
+// // Events
+// loginButton.addEventListener("click", initiateAuthFlow);
 // logoutButton.addEventListener("click", logout);
-// function logout() {
-//   localStorage.removeItem("accessToken");
-//   localStorage.removeItem("refreshToken");
-//   localStorage.removeItem("idToken");
-//   accessToken = null;
-//   clearTimeout(idleTimer);
-//   resultDiv.innerText = "Logged out.";
-//   updateUI();
-// }
 
-// // Idle Timer
-// function resetIdleTimer() {
-//   clearTimeout(idleTimer);
-//   idleTimer = setTimeout(refreshAccessToken, IDLE_TIMEOUT_MS);
-// }
-
-// ["mousemove", "keydown", "click", "scroll"].forEach((event) =>
-//   window.addEventListener(event, resetIdleTimer)
+// // Monitor user activity
+// ["click", "mousemove", "keypress"].forEach((event) =>
+//   document.addEventListener(event, resetIdleTimer)
 // );
 
 // // On load
 // window.addEventListener("load", () => {
-//   accessToken = localStorage.getItem("accessToken");
+//   accessToken = localStorage.getItem("access_token");
 //   if (accessToken) {
 //     resultDiv.innerText = "Using stored token.";
 //     updateUI();
+//     startRefreshTimer();
 //     resetIdleTimer();
 //   }
 //   handleAuthorizationResponse();
 // });
-
-// // Login
-// loginButton.addEventListener("click", initiateAuthFlow);
 
 // Elements
 const loginButton = document.getElementById("login-button");
@@ -225,6 +242,7 @@ const clientId = "spa-client";
 const redirectUri = "http://localhost:9001/";
 const authorizationEndpoint = "http://localhost:9001/oauth2/authorize";
 const tokenEndpoint = "http://localhost:9001/oauth2/token";
+const logoutEndpoint = "http://localhost:9001/api/users/logout"; // Add logout endpoint
 const resourceServerEndpoint = "http://localhost:8091/api/home";
 const scope = "openid profile read write offline_access";
 
@@ -276,6 +294,8 @@ async function initiateAuthFlow() {
     `&code_challenge_method=S256` +
     `&state=${encodeURIComponent(state)}`;
 
+  console.log("🔍 Authorization URL:", authUrl);
+
   window.location.href = authUrl;
 }
 
@@ -312,8 +332,11 @@ async function handleAuthorizationResponse() {
       const tokenData = await response.json();
       accessToken = tokenData.access_token;
       localStorage.setItem("access_token", tokenData.access_token || "");
-      localStorage.setItem("refresh_token", tokenData.refresh_token || "");
+      tokenData.refresh_token &&
+        localStorage.setItem("refresh_token", tokenData.refresh_token);
       localStorage.setItem("id_token", tokenData.id_token || "");
+
+      localStorage.allData = JSON.stringify(tokenData);
 
       resultDiv.innerText = "Access token received!";
       updateUI();
@@ -328,6 +351,10 @@ async function handleAuthorizationResponse() {
       sessionStorage.removeItem("code_verifier");
       sessionStorage.removeItem("oauth_state");
     }
+  } else if (params.has("logout")) {
+    // Handle redirect after logout
+    resultDiv.innerText = "Successfully logged out.";
+    logout(); // Ensure client-side cleanup
   }
 }
 
@@ -387,21 +414,57 @@ function updateUI() {
   if (accessToken) {
     loginButton.disabled = true;
     callResourceButton.disabled = false;
+    logoutButton.disabled = false; // Enable logout button when logged in
   } else {
     loginButton.disabled = false;
     callResourceButton.disabled = true;
+    logoutButton.disabled = true; // Disable logout button when logged out
   }
 }
 
 // Logout
-function logout() {
-  localStorage.removeItem("access_token");
-  localStorage.removeItem("refresh_token");
-  localStorage.removeItem("id_token");
-  accessToken = null;
-  clearInterval(refreshInterval);
-  clearTimeout(idleTimeout);
-  updateUI();
+async function logout() {
+  try {
+    // Call the server's logout endpoint
+    const response = await fetch(logoutEndpoint, {
+      method: "POST", // Use POST for logout (adjust if your server expects GET)
+      headers: {
+        Authorization: `Bearer ${accessToken}`, // Include access token if required
+      },
+      credentials: "include", // Include cookies for session
+    });
+
+    if (!response.ok) throw new Error("Logout request failed");
+
+    // Clear client-side storage
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    localStorage.removeItem("id_token");
+    localStorage.removeItem("allData");
+    accessToken = null;
+
+    // Clear timers
+    clearInterval(refreshInterval);
+    clearTimeout(idleTimeout);
+
+    // Update UI
+    updateUI();
+    resultDiv.innerText = "Successfully logged out.";
+
+    // Optionally redirect to login page
+    window.location.href = "/?logout=success";
+  } catch (err) {
+    console.error("Logout failed:", err);
+    resultDiv.innerText = "Logout failed. Please try again.";
+
+    // Clear client-side storage even if server logout fails
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    localStorage.removeItem("id_token");
+    localStorage.removeItem("allData");
+    accessToken = null;
+    updateUI();
+  }
 }
 
 // Call resource
@@ -430,14 +493,18 @@ logoutButton.addEventListener("click", logout);
   document.addEventListener(event, resetIdleTimer)
 );
 
-// On load
-window.addEventListener("load", () => {
-  accessToken = localStorage.getItem("access_token");
-  if (accessToken) {
-    resultDiv.innerText = "Using stored token.";
-    updateUI();
-    startRefreshTimer();
-    resetIdleTimer();
+window.addEventListener("load", async () => {
+  const params = new URLSearchParams(window.location.search);
+
+  if (params.has("code")) {
+    await handleAuthorizationResponse(); // 🎯 Handles redirect back from auth server
+  } else {
+    accessToken = localStorage.getItem("access_token");
+    if (accessToken) {
+      resultDiv.innerText = "Using stored token.";
+      updateUI();
+      startRefreshTimer();
+      resetIdleTimer();
+    }
   }
-  handleAuthorizationResponse();
 });
