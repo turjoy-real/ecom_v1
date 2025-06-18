@@ -3,6 +3,8 @@ package com.services.productservice.controllers;
 import com.services.productservice.models.Category;
 import com.services.productservice.repositories.CategoryRepository;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,11 +19,13 @@ public class CategoryController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<List<Category>> getAllCategories() {
         return ResponseEntity.ok(categoryRepo.findAll());
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<Category> getCategoryById(@PathVariable("id") Long id) {
         return categoryRepo.findById(id)
                 .map(ResponseEntity::ok)
@@ -29,13 +33,13 @@ public class CategoryController {
     }
 
     @PostMapping
-    // @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Category> createCategory(@RequestBody Category category) {
         return ResponseEntity.ok(categoryRepo.save(category));
     }
 
     @PatchMapping("/{id}")
-    // @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Category> updateCategory(@PathVariable("id") Long id, @RequestBody Category category) {
         return categoryRepo.findById(id)
                 .map(existingCategory -> {
@@ -46,7 +50,7 @@ public class CategoryController {
     }
 
     @DeleteMapping("/{id}")
-    // @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteCategory(@PathVariable("id") Long id) {
         return categoryRepo.findById(id)
                 .map(category -> {
