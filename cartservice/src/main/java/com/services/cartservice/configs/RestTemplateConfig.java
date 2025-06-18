@@ -1,4 +1,4 @@
-package com.services.cartservice.config;
+package com.services.cartservice.configs;
 
 import org.springframework.cloud.client.loadbalancer.LoadBalanced;
 import org.springframework.context.annotation.Bean;

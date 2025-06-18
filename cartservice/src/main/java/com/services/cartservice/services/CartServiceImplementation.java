@@ -49,7 +49,6 @@ public class CartServiceImplementation implements CartService {
 
     @Override
     @Transactional
-    @CachePut(value = "cart", key = "#userId")
     public CartResponse addItemToCart(String userId, CartItemDTO cartItemDTO) {
         validateUser(userId);
 

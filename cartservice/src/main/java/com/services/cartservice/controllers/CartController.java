@@ -7,41 +7,58 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+
 @RestController
 @RequestMapping("/api/cart")
 @RequiredArgsConstructor
 public class CartController {
     private final CartService cartService;
 
-    @GetMapping("/{userId}")
-    public ResponseEntity<CartResponse> getCart(@PathVariable String userId) {
+    @GetMapping
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<CartResponse> getCart(Authentication authentication) {
+        String userId = authentication.getName(); // or extract from principal
         return ResponseEntity.ok(cartService.getCart(userId));
     }
 
-    @PostMapping("/{userId}/items")
+    // ➕ Add item to cart
+    @PostMapping("/items")
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<CartResponse> addItemToCart(
-            @PathVariable String userId,
+            Authentication authentication,
             @RequestBody CartItemDTO cartItemDTO) {
+        String userId = authentication.getName();
         return ResponseEntity.ok(cartService.addItemToCart(userId, cartItemDTO));
     }
 
-    @DeleteMapping("/{userId}/items/{productId}")
-    public ResponseEntity<Void> removeItemFromCart(
-            @PathVariable String userId,
+    // ➖ Decrement item quantity
+    @PatchMapping("/items/{productId}/decrement")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<CartResponse> decrementItemQuantity(
+            Authentication authentication,
             @PathVariable String productId) {
+        String userId = authentication.getName();
+        return ResponseEntity.ok(cartService.decrementItemQuantity(userId, productId));
+    }
+
+    // ❌ Remove item from cart
+    @DeleteMapping("/items/{productId}")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<Void> removeItemFromCart(
+            Authentication authentication,
+            @PathVariable String productId) {
+        String userId = authentication.getName();
         cartService.removeItemFromCart(userId, productId);
         return ResponseEntity.noContent().build();
     }
 
-    @PatchMapping("/{userId}/items/{productId}/decrement")
-    public ResponseEntity<CartResponse> decrementItemQuantity(
-            @PathVariable String userId,
-            @PathVariable String productId) {
-        return ResponseEntity.ok(cartService.decrementItemQuantity(userId, productId));
-    }
-
-    @DeleteMapping("/{userId}")
-    public ResponseEntity<Void> clearCart(@PathVariable String userId) {
+    // 🧹 Clear entire cart
+    @DeleteMapping
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<Void> clearCart(Authentication authentication) {
+        String userId = authentication.getName();
         cartService.clearCart(userId);
         return ResponseEntity.noContent().build();
     }
