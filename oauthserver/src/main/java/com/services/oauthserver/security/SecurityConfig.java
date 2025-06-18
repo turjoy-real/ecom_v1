@@ -4,6 +4,9 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 
+import com.services.oauthserver.models.User;
+import com.services.oauthserver.security.models.CustomUserDetails;
+
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -102,7 +105,15 @@ public class SecurityConfig {
                             .map(c -> c.replaceFirst("^ROLE_", ""))
                             .collect(Collectors.collectingAndThen(Collectors.toSet(),
                                     Collections::unmodifiableSet));
-                    claims.put("roles", roles);
+                                    Object principal = context.getPrincipal().getPrincipal();
+
+                                    if (principal instanceof CustomUserDetails customUser) {
+                                        User user = customUser.getUser();
+                    
+                                        claims.put("sub", user.getId().toString());        // ✅ UUID as subject
+                                        claims.put("user_id", user.getEmail());            // ✅ Optional email
+                                        claims.put("roles", roles);
+                                    }
                 });
             }
         };

@@ -37,4 +37,8 @@ public class ProfileService {
                 .orElseThrow(() -> new UserNotFound("User not found with email: " + email));
         return UserDTO.fromEntity(user);
     }
+
+    boolean userExistsById(Long userId) {
+        return userRepository.existsById(userId);
+    }
 }

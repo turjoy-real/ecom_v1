@@ -16,6 +16,7 @@ import org.springframework.security.core.Authentication;
 public class CartController {
     private final CartService cartService;
 
+
     @GetMapping
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<CartResponse> getCart(Authentication authentication) {
@@ -23,13 +24,14 @@ public class CartController {
         return ResponseEntity.ok(cartService.getCart(userId));
     }
 
-    // ➕ Add item to cart
     @PostMapping("/items")
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<CartResponse> addItemToCart(
             Authentication authentication,
             @RequestBody CartItemDTO cartItemDTO) {
         String userId = authentication.getName();
+        
+        System.out.println("Authenticated User: " + userId);
         return ResponseEntity.ok(cartService.addItemToCart(userId, cartItemDTO));
     }
 
