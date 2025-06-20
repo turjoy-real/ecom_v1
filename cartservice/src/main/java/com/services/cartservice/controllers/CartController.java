@@ -3,6 +3,7 @@ package com.services.cartservice.controllers;
 import com.services.cartservice.dtos.CartItemDTO;
 import com.services.cartservice.dtos.CartResponse;
 import com.services.cartservice.services.CartService;
+import com.services.cartservice.services.OrderServiceClient;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,7 +16,7 @@ import org.springframework.security.core.Authentication;
 @RequiredArgsConstructor
 public class CartController {
     private final CartService cartService;
-
+    private final OrderServiceClient orderServiceClient;
 
     @GetMapping
     @PreAuthorize("hasRole('USER')")
@@ -30,7 +31,7 @@ public class CartController {
             Authentication authentication,
             @RequestBody CartItemDTO cartItemDTO) {
         String userId = authentication.getName();
-        
+
         System.out.println("Authenticated User: " + userId);
         return ResponseEntity.ok(cartService.addItemToCart(userId, cartItemDTO));
     }
@@ -63,5 +64,18 @@ public class CartController {
         String userId = authentication.getName();
         cartService.clearCart(userId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/place-order")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<?> placeOrder(Authentication authentication, @RequestParam String addressId) {
+        String userId = authentication.getName();
+        CartResponse cart = cartService.getCart(userId);
+        if (cart.getItems() == null || cart.getItems().isEmpty()) {
+            return ResponseEntity.badRequest().body("Cart is empty");
+        }
+        String paymentLink = orderServiceClient.placeOrder(userId, addressId, cart.getItems());
+        cartService.clearCart(userId);
+        return ResponseEntity.ok(paymentLink);
     }
 }
