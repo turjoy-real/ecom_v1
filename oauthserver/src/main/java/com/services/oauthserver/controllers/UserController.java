@@ -12,7 +12,6 @@ import com.services.oauthserver.services.UserService;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.NonNull;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,22 +59,6 @@ public class UserController {
         dto.setEmailVerified(user.isEmailVerified());
 
         return dto;
-    }
-
-    @PostMapping("/findByEmail/{email}")
-    public ResponseEntity<User> findByEmail(@PathVariable("email") @NonNull String email) {
-        User user = userService.getUserByEmail(email);
-        if (user != null) {
-            return ResponseEntity.ok(user);
-        } else {
-            return ResponseEntity.notFound().build();
-        }
-    }
-
-    @GetMapping("/verify/{userId}")
-    public ResponseEntity<Boolean> verifyUser(@PathVariable("userId") Long userId) {
-        boolean exists = userService.verifyUser(userId);
-        return ResponseEntity.ok(exists);
     }
 
     // POST /api/request-reset?email=someone@example.com

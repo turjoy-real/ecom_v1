@@ -1,6 +1,7 @@
 package com.services.oauthserver.services;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,7 @@ public class PasswordResetService {
     private String baseUrl;
 
     @Transactional
+    @Async
     public void requestPasswordReset(String email) {
         User user = userRepo.findByEmail(email).orElseThrow(() -> new UserNotFound("No user with this email"));
 

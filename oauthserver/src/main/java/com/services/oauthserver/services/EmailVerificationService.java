@@ -1,6 +1,7 @@
 package com.services.oauthserver.services;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -34,17 +35,8 @@ public class EmailVerificationService {
         this.emailEventProducer = emailEventProducer;
     }
 
-    // @Transactional
-    // public void sendVerificationEmail(User user) {
-    // String token = UUID.randomUUID().toString();
-    // EmailVerificationToken verificationToken = new EmailVerificationToken(
-    // token, user, LocalDateTime.now().plusDays(1));
-    // tokenRepo.save(verificationToken);
-    // String link = baseUrl + "/api/users/open/verify-email?token=" + token;
-    // emailEventProducer.sendVerificationEmail(user.getEmail(), link);
-    // }
-
     @Transactional
+    @Async
     public void sendVerificationEmail(User user) {
         // Delete any existing tokens for this user
         tokenRepo.deleteByUser(user);
@@ -62,6 +54,7 @@ public class EmailVerificationService {
     }
 
     @Transactional
+    @Async
     public boolean verify(String token) {
         Optional<EmailVerificationToken> opt = tokenRepo.findByToken(token);
         if (opt.isEmpty())

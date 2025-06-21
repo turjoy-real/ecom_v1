@@ -5,6 +5,8 @@ import com.services.orderservice.services.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 
 import java.util.List;
 import java.util.Map;
@@ -30,7 +32,27 @@ public class OrderController {
         return ResponseEntity.ok(orderService.getOrder(orderId));
     }
 
+    @GetMapping("/my")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<OrderResponse>> getMyOrders(
+            Authentication authentication,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String paymentStatus,
+            @RequestParam(required = false, defaultValue = "orderDate") String sortBy,
+            @RequestParam(required = false, defaultValue = "desc") String sortDirection) {
+        String userId = authentication.getName();
+        return ResponseEntity.ok(orderService.getUserOrders(userId, status, paymentStatus, sortBy, sortDirection));
+    }
+
+    @GetMapping("/my/analytics")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, Object>> getMyOrderAnalytics(Authentication authentication) {
+        String userId = authentication.getName();
+        return ResponseEntity.ok(orderService.getOrderAnalytics(userId));
+    }
+
     @GetMapping("/user/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<OrderResponse>> getUserOrders(
             @PathVariable String userId,
             @RequestParam(required = false) String status,
@@ -103,6 +125,7 @@ public class OrderController {
 
     // New analytics endpoint
     @GetMapping("/user/{userId}/analytics")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> getOrderAnalytics(@PathVariable String userId) {
         return ResponseEntity.ok(orderService.getOrderAnalytics(userId));
     }

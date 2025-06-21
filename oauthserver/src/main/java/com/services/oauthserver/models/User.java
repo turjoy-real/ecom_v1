@@ -12,20 +12,6 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
-// @Getter
-// @Setter
-// @Entity
-// @JsonDeserialize
-// @JsonIgnoreProperties(ignoreUnknown = true)
-// public class User extends BaseModel {
-//     private String name;
-//     private String email;
-//     private String hashedPassword;
-//     @ManyToMany(fetch = FetchType.EAGER)
-//     private List<Role> roles;
-//     private boolean isEmailVerified;
-// }
-
 @Setter
 @Getter
 @Entity

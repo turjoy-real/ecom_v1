@@ -6,7 +6,6 @@ import com.services.userservice.models.User;
 import com.services.userservice.repositories.AddressRepository;
 import com.services.userservice.repositories.UserRepo;
 import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -18,7 +17,6 @@ public class AddressService {
     private final AddressRepository addressRepository;
     private final UserRepo userRepo;
 
-    @Autowired
     public AddressService(AddressRepository addressRepository, UserRepo userRepo) {
         this.addressRepository = addressRepository;
         this.userRepo = userRepo;
