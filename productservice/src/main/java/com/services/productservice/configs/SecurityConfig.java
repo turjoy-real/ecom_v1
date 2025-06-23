@@ -26,10 +26,9 @@ public class SecurityConfig {
                                                 .requestMatchers(
                                                                 "/v3/api-docs/**",
                                                                 "/swagger-ui/**",
-                                                                "/swagger-ui.html")
+                                                                "/swagger-ui.html",
+                                                                "/api/products/**")
                                                 .permitAll()
-                                                .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
-                                                .requestMatchers("/api/products/**").hasRole("ADMIN")
                                                 .anyRequest().authenticated())
                                 .oauth2ResourceServer(oauth2 -> oauth2
                                                 .jwt(jwt -> jwt

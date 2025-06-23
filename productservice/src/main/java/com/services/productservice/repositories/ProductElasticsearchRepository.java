@@ -6,8 +6,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
 import org.springframework.data.elasticsearch.annotations.Query;
 
-import java.util.List;
-
 public interface ProductElasticsearchRepository extends ElasticsearchRepository<ProductDocument, String> {
     // Basic search with pagination
     Page<ProductDocument> findByNameContainingIgnoreCase(String name, Pageable pageable);

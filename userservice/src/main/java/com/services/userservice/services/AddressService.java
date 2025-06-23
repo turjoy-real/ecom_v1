@@ -1,6 +1,6 @@
 package com.services.userservice.services;
 
-import com.services.userservice.dtos.AddressDTO;
+import com.services.common.dtos.AddressDTO;
 import com.services.userservice.models.Address;
 import com.services.userservice.models.User;
 import com.services.userservice.repositories.AddressRepository;

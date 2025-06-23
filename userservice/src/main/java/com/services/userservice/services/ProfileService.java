@@ -1,10 +1,15 @@
 package com.services.userservice.services;
 
+import com.services.common.dtos.UserDTO;
 import com.services.userservice.dtos.ProfileUpdateRequest;
-import com.services.userservice.dtos.UserDTO;
+import com.services.userservice.dtos.UserMapper;
 import com.services.userservice.exceptions.UserNotFound;
+import com.services.userservice.models.Role;
 import com.services.userservice.models.User;
 import com.services.userservice.repositories.UserRepo;
+
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,10 +21,10 @@ public class ProfileService {
         this.userRepository = userRepository;
     }
 
-    public UserDTO getUserProfile(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UserNotFound("User not found with email: " + email));
-        return UserDTO.fromEntity(user);
+    public UserDTO getUserProfile(String id) {
+        User user = userRepository.findById(Long.parseLong(id))
+                .orElseThrow(() -> new UserNotFound("User not found with id: " + id));
+        return UserMapper.fromEntity(user);
     }
 
     @Transactional
@@ -29,13 +34,13 @@ public class ProfileService {
 
         user.setName(request.getName());
         user = userRepository.save(user);
-        return UserDTO.fromEntity(user);
+        return UserMapper.fromEntity(user);
     }
 
     public UserDTO getProfileByEmail(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UserNotFound("User not found with email: " + email));
-        return UserDTO.fromEntity(user);
+        return UserMapper.fromEntity(user);
     }
 
     boolean userExistsById(Long userId) {

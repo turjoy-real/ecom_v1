@@ -1,6 +1,6 @@
 package com.services.paymentservice.services;
 
-import com.services.paymentservice.dtos.CreatePaymentLinkRequestDto;
+import com.services.common.dtos.CreatePaymentLinkRequestDto;
 
 public interface PaymentService {
 

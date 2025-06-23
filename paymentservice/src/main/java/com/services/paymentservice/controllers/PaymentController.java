@@ -1,6 +1,6 @@
 package com.services.paymentservice.controllers;
 
-import com.services.paymentservice.dtos.CreatePaymentLinkRequestDto;
+import com.services.common.dtos.CreatePaymentLinkRequestDto;
 import com.services.paymentservice.services.PaymentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

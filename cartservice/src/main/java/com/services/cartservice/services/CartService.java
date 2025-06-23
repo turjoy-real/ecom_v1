@@ -1,7 +1,7 @@
 package com.services.cartservice.services;
 
-import com.services.cartservice.dtos.CartItemDTO;
-import com.services.cartservice.dtos.CartResponse;
+import com.services.common.dtos.CartItemDTO;
+import com.services.common.dtos.CartResponse;
 
 /**
  * Interface defining the contract for cart operations

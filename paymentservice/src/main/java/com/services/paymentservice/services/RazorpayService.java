@@ -3,22 +3,19 @@ package com.services.paymentservice.services;
 import com.razorpay.PaymentLink;
 import com.razorpay.RazorpayClient;
 import com.razorpay.Webhook;
-import com.services.paymentservice.dtos.CreatePaymentLinkRequestDto;
-import com.services.paymentservice.exceptions.PaymentLinkCreationException;
+import com.services.common.dtos.CreatePaymentLinkRequestDto;
 
-import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
-import org.springframework.beans.factory.annotation.Qualifier;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Primary;
-import org.springframework.http.*;
+
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.Arrays;
-import java.util.Base64;
+
 import java.util.List;
 
 @Service

@@ -28,8 +28,6 @@ public class SecurityConfig {
                                                                 "/swagger-ui/**",
                                                                 "/swagger-ui.html")
                                                 .permitAll()
-                                                .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
-                                                .requestMatchers("/api/products/**").hasRole("ADMIN")
                                                 .anyRequest().authenticated())
                                 .oauth2ResourceServer(oauth2 -> oauth2
                                                 .jwt(jwt -> jwt

@@ -1,342 +1,191 @@
 package com.services.orderservice.services;
 
-import com.services.orderservice.dtos.OrderRequest;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.security.core.Authentication;
+import org.springframework.stereotype.Service;
+
+import com.services.common.dtos.CartItemDTO;
+import com.services.common.dtos.CartResponse;
+import com.services.common.dtos.CreatePaymentLinkRequestDto;
+import com.services.common.dtos.UserDTO;
+import com.services.orderservice.clients.CartClient;
+import com.services.orderservice.clients.PaymentClient;
+import com.services.orderservice.clients.ProductClient;
+import com.services.orderservice.clients.UserClient;
 import com.services.orderservice.dtos.OrderResponse;
-import com.services.orderservice.dtos.OrderTrackingResponse;
-import com.services.orderservice.dtos.ReturnRequestDTO;
-import com.services.orderservice.dtos.ReturnRequestResponse;
-import com.services.orderservice.exceptions.OrderNotFoundException;
-import com.services.orderservice.exceptions.UserVerificationException;
+import com.services.orderservice.dtos.OrderResponse.OrderItemResponse;
+import com.services.orderservice.exceptions.ProductNotAvailableException;
 import com.services.orderservice.models.Order;
 import com.services.orderservice.models.OrderItem;
 import com.services.orderservice.models.OrderStatus;
 import com.services.orderservice.models.PaymentStatus;
-import com.services.orderservice.models.OrderTracking;
-import com.services.orderservice.models.ReturnRequest;
 import com.services.orderservice.repositories.OrderRepository;
-import com.services.orderservice.repositories.OrderTrackingRepository;
-import com.services.orderservice.repositories.ReturnRequestRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.stream.Collectors;
+import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class OrderServiceImpl implements OrderService {
 
+    // Autowired dependencies
     private final OrderRepository orderRepository;
-    private final OrderTrackingRepository trackingRepository;
-    private final ReturnRequestRepository returnRequestRepository;
-    private final ProductServiceClient productServiceClient;
-    private final UserServiceClient userServiceClient;
+    private final ProductClient productClient;
+    private final CartClient cartClient;
+    private final PaymentClient paymentClient;
+    private final UserClient userClient;
+    private final OrderStatusUpdateProducer orderStatusUpdateProducer;
 
+    private static final Logger log = LoggerFactory.getLogger(OrderServiceImpl.class);
+
+    @Async
+    private void clearCartAsync(String token) {
+        cartClient.clearCart(token); // this will now run asynchronously
+    }
+
+    // Implement methods from OrderService interface
     @Override
     @Transactional
-    public OrderResponse createOrder(OrderRequest request) {
-        // Verify user exists
-        if (!userServiceClient.verifyUser(request.getUserId())) {
-            throw new UserVerificationException("User not found with ID: " + request.getUserId());
+    public OrderResponse createOrderFromCart(Authentication authentication, Long addressId) {
+
+        // Implementation logic here
+        // 1. Get items from cart
+        String token = "Bearer " + authentication.getCredentials();
+        log.info("Token: {}", authentication.getCredentials());
+
+        CartResponse cartResponse = cartClient.getCart(token);
+        List<CartItemDTO> products = cartResponse.getItems();
+        // 2. Check if product quantities match -> throw error to reduce to cancel
+        // product from order
+        for (CartItemDTO item : products) {
+            Long productId = Long.parseLong(item.getProductId());
+            int requestedQty = item.getQuantity();
+
+            if (!productClient.verifyStock(productId, requestedQty)) {
+                throw new ProductNotAvailableException(productId, requestedQty); // At least one product is not
+                                                                                 // available
+            }
+        }
+        // 3. Create order
+        Order order = new Order();
+
+        List<OrderItem> orderItems = new ArrayList<>();
+
+        for (CartItemDTO item : products) {
+            OrderItem orderItem = new OrderItem();
+            orderItem.setProductId(item.getProductId());
+            orderItem.setProductName(item.getProductName());
+            orderItem.setPrice(item.getPrice() / item.getQuantity());
+            orderItem.setSubtotal(item.getPrice());
+            orderItem.setQuantity(item.getQuantity());
+            orderItem.setOrder(order);
+
+            orderItems.add(orderItem);
         }
 
-        // Create order
-        Order order = new Order();
-        order.setUserId(request.getUserId());
+        order.setAddressId(String.valueOf(addressId));
+        order.setItems(orderItems);
+        order.setUserId(authentication.getName());
+        order.setPaymentMethod(null);
+
         order.setStatus(OrderStatus.CREATED);
         order.setPaymentStatus(PaymentStatus.PENDING);
-        order.setOrderDate(LocalDateTime.now());
-        order.setAddressId(request.getShippingAddressId());
 
-        // Create and validate order items
-        List<OrderItem> orderItems = request.getItems().stream()
-                .map(itemRequest -> {
-                    // Verify product exists and has enough stock
-                    if (!productServiceClient.verifyStock(itemRequest.getProductId(), itemRequest.getQuantity())) {
-                        throw new RuntimeException("Insufficient stock for product: " + itemRequest.getProductId());
-                    }
+        order.setTotalAmount(cartResponse.getTotal());
 
-                    // Get product details
-                    ProductServiceClient.ProductDetails productDetails = productServiceClient
-                            .getProductDetails(itemRequest.getProductId());
-
-                    OrderItem orderItem = new OrderItem();
-                    orderItem.setProductId(itemRequest.getProductId());
-                    orderItem.setProductName(productDetails.getName());
-                    orderItem.setPrice(productDetails.getPrice());
-                    orderItem.setQuantity(itemRequest.getQuantity());
-                    orderItem.setSubtotal(productDetails.getPrice() * itemRequest.getQuantity());
-                    orderItem.setOrder(order);
-                    return orderItem;
-                })
-                .collect(Collectors.toList());
-
-        order.setItems(orderItems);
-        // Calculate total amount
-        double totalAmount = orderItems.stream()
-                .mapToDouble(OrderItem::getSubtotal)
-                .sum();
-        order.setTotalAmount(totalAmount);
         Order savedOrder = orderRepository.save(order);
-        return convertToOrderResponse(savedOrder);
-    }
 
-    @Override
-    @Transactional(readOnly = true)
-    public OrderResponse getOrder(Long orderId) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new OrderNotFoundException(orderId));
-        return convertToOrderResponse(order);
-    }
+        // 4. Clear cart
+        clearCartAsync(token);
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<OrderResponse> getUserOrders(String userId, String status, String paymentStatus, String sortBy,
-            String sortDirection) {
-        List<Order> orders;
+        // 5. Get payment link
 
-        if (status != null && paymentStatus != null) {
-            orders = orderRepository.findByUserIdAndStatusAndPaymentStatus(
-                    userId,
-                    OrderStatus.valueOf(status.toUpperCase()),
-                    PaymentStatus.valueOf(paymentStatus.toUpperCase()));
-        } else if (status != null) {
-            orders = orderRepository.findByUserIdAndStatus(
-                    userId,
-                    OrderStatus.valueOf(status.toUpperCase()));
-        } else if (paymentStatus != null) {
-            orders = orderRepository.findByUserIdAndPaymentStatus(
-                    userId,
-                    PaymentStatus.valueOf(paymentStatus.toUpperCase()));
-        } else {
-            orders = orderRepository.findByUserId(userId);
+        UserDTO userDetails = userClient.getMyProfile(token);
+        if (userDetails == null) {
+            throw new RuntimeException("User details not found");
         }
 
-        // Sort the orders
-        orders.sort((o1, o2) -> {
-            int direction = sortDirection.equalsIgnoreCase("desc") ? -1 : 1;
-            switch (sortBy.toLowerCase()) {
-                case "orderdate":
-                    return direction * o1.getOrderDate().compareTo(o2.getOrderDate());
-                case "totalamount":
-                    return direction * Double.compare(o1.getTotalAmount(), o2.getTotalAmount());
-                case "status":
-                    return direction * o1.getStatus().name().compareTo(o2.getStatus().name());
-                case "paymentstatus":
-                    return direction * o1.getPaymentStatus().name().compareTo(o2.getPaymentStatus().name());
-                default:
-                    return direction * o1.getOrderDate().compareTo(o2.getOrderDate());
-            }
-        });
+        CreatePaymentLinkRequestDto paymentRequest = new CreatePaymentLinkRequestDto();
+        paymentRequest.setOrderId(savedOrder.getId().toString());
+        paymentRequest.setUserId(authentication.getName());
+        paymentRequest.setAmount(savedOrder.getTotalAmount());
+        paymentRequest.setCurrency("INR");
+        paymentRequest.setCustomerName(userDetails.getName());
+        paymentRequest.setCustomerEmail(userDetails.getEmail());
+        paymentRequest.setCustomerContact(null);
+        paymentRequest.setDescription("Order Payment for Order ID: " + savedOrder.getId());
+        paymentRequest.setAcceptPartial(false);
+        paymentRequest.setFirstMinPartialAmount(0);
+        paymentRequest.setReminderEnable(true);
 
-        return orders.stream()
-                .map(this::convertToOrderResponse)
-                .collect(Collectors.toList());
+        String paymentLink = paymentClient.generatePaymentLink(token, paymentRequest);
+
+        // 6. Get shipping address
+
+        // 7. Provide order response
+
+        List<OrderItemResponse> savedItems = new ArrayList<>();
+
+        for (CartItemDTO item : products) {
+            OrderItemResponse orderItem = new OrderItemResponse();
+            orderItem.setProductId(item.getProductId());
+            orderItem.setProductName(item.getProductName());
+            orderItem.setPrice(item.getPrice() / item.getQuantity());
+            orderItem.setSubtotal(item.getPrice());
+            orderItem.setQuantity(item.getQuantity());
+
+            savedItems.add(orderItem);
+        }
+
+        OrderResponse orderResponse = new OrderResponse();
+        orderResponse.setId(savedOrder.getId().toString());
+        orderResponse.setUserId(authentication.getName());
+        orderResponse.setItems(savedItems);
+        orderResponse.setTotalAmount(savedOrder.getTotalAmount());
+        orderResponse.setStatus(savedOrder.getStatus());
+        orderResponse.setPaymentStatus(savedOrder.getPaymentStatus());
+        orderResponse.setOrderDate(savedOrder.getCreatedAt());
+        orderResponse.setCreatedAt(savedOrder.getCreatedAt());
+        orderResponse.setShippingAddressId(savedOrder.getAddressId());
+        orderResponse.setPaymentMethod(savedOrder.getPaymentMethod());
+        orderResponse.setPaymentLink(paymentLink);
+
+        // After saving the order and before returning the response, send order status
+        // update
+        orderStatusUpdateProducer.sendOrderStatusUpdate(
+                userDetails.getEmail(),
+                savedOrder.getId().toString(),
+                savedOrder.getStatus().toString());
+
+        return orderResponse; // Placeholder return statement
     }
 
     @Override
-    @Transactional
-    public OrderResponse updateOrderStatus(Long orderId, String status) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new OrderNotFoundException(orderId));
-
-        try {
-            OrderStatus newStatus = OrderStatus.valueOf(status.toUpperCase());
-            order.setStatus(newStatus);
-            return convertToOrderResponse(orderRepository.save(order));
-        } catch (IllegalArgumentException e) {
-            throw new RuntimeException("Invalid order status: " + status);
-        }
-    }
-
-    @Override
-    @Transactional
-    public void cancelOrder(Long orderId) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new OrderNotFoundException(orderId));
-
-        if (order.getStatus() == OrderStatus.DELIVERED) {
-            throw new RuntimeException("Cannot cancel a delivered order");
-        }
-
-        order.setStatus(OrderStatus.CANCELLED);
+    public boolean updateOrderStatus(Long orderId, String status) {
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null)
+            return false;
+        order.setStatus(OrderStatus.valueOf(status));
         orderRepository.save(order);
+        // Send notification
+        orderStatusUpdateProducer.sendOrderStatusUpdate(order.getUserId(), order.getId().toString(),
+                order.getStatus().toString());
+        return true;
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public OrderTrackingResponse getOrderTracking(Long orderId) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new OrderNotFoundException(orderId));
-
-        OrderTracking tracking = trackingRepository.findByOrderId(orderId);
-        if (tracking == null) {
-            throw new RuntimeException("No tracking information found for order: " + orderId);
-        }
-
-        return convertToTrackingResponse(tracking);
+    public boolean updatePaymentStatus(Long orderId, String paymentStatus) {
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null)
+            return false;
+        order.setPaymentStatus(PaymentStatus.valueOf(paymentStatus));
+        orderRepository.save(order);
+        return true;
     }
 
-    @Override
-    @Transactional
-    public OrderTrackingResponse updateOrderTracking(Long orderId, String trackingNumber, String carrier) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new OrderNotFoundException(orderId));
-
-        OrderTracking tracking = trackingRepository.findByOrderId(orderId);
-        if (tracking == null) {
-            tracking = new OrderTracking();
-            tracking.setOrder(order);
-        }
-
-        tracking.setTrackingNumber(trackingNumber);
-        tracking.setCarrier(carrier);
-        tracking.setTrackingUrl(generateTrackingUrl(carrier, trackingNumber));
-        tracking.setCurrentStatus("SHIPPED");
-        tracking.setEstimatedDeliveryDate(LocalDateTime.now().plusDays(5)); // Example: 5 days delivery estimate
-
-        return convertToTrackingResponse(trackingRepository.save(tracking));
-    }
-
-    @Override
-    @Transactional
-    public ReturnRequestResponse createReturnRequest(Long orderId, ReturnRequestDTO request) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new OrderNotFoundException(orderId));
-
-        // Check if return request already exists
-        if (returnRequestRepository.findByOrderId(orderId) != null) {
-            throw new RuntimeException("Return request already exists for order: " + orderId);
-        }
-
-        ReturnRequest returnRequest = new ReturnRequest();
-        returnRequest.setOrder(order);
-        returnRequest.setReason(request.getReason());
-        returnRequest.setDescription(request.getDescription());
-        returnRequest.setStatus("PENDING");
-
-        return convertToReturnRequestResponse(returnRequestRepository.save(returnRequest));
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public ReturnRequestResponse getReturnRequest(Long returnId) {
-        ReturnRequest returnRequest = returnRequestRepository.findById(returnId)
-                .orElseThrow(() -> new RuntimeException("Return request not found: " + returnId));
-        return convertToReturnRequestResponse(returnRequest);
-    }
-
-    @Override
-    @Transactional
-    public ReturnRequestResponse updateReturnStatus(Long returnId, String status) {
-        ReturnRequest returnRequest = returnRequestRepository.findById(returnId)
-                .orElseThrow(() -> new RuntimeException("Return request not found: " + returnId));
-
-        returnRequest.setStatus(status);
-        if (status.equals("APPROVED")) {
-            returnRequest.setProcessedAt(LocalDateTime.now());
-            returnRequest.setReturnLabelUrl(generateReturnLabel(returnRequest));
-        } else if (status.equals("COMPLETED")) {
-            returnRequest.setCompletedAt(LocalDateTime.now());
-        }
-
-        return convertToReturnRequestResponse(returnRequestRepository.save(returnRequest));
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<ReturnRequestResponse> getReturnRequestsByStatus(String status) {
-        return returnRequestRepository.findByStatus(status).stream()
-                .map(this::convertToReturnRequestResponse)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Map<String, Object> getOrderAnalytics(String userId) {
-        List<Order> orders = orderRepository.findByUserId(userId);
-
-        Map<String, Object> analytics = new HashMap<>();
-        analytics.put("totalOrders", orders.size());
-        analytics.put("totalSpent", orders.stream().mapToDouble(Order::getTotalAmount).sum());
-
-        Map<String, Long> statusCounts = orders.stream()
-                .collect(Collectors.groupingBy(
-                        order -> order.getStatus().name(),
-                        Collectors.counting()));
-        analytics.put("statusBreakdown", statusCounts);
-
-        Map<String, Long> paymentStatusCounts = orders.stream()
-                .collect(Collectors.groupingBy(
-                        order -> order.getPaymentStatus().name(),
-                        Collectors.counting()));
-        analytics.put("paymentStatusBreakdown", paymentStatusCounts);
-
-        return analytics;
-    }
-
-    private OrderResponse convertToOrderResponse(Order order) {
-        OrderResponse response = new OrderResponse();
-        response.setId(String.valueOf(order.getId()));
-        response.setUserId(order.getUserId());
-        response.setStatus(order.getStatus().name());
-        response.setPaymentStatus(order.getPaymentStatus());
-        response.setOrderDate(order.getOrderDate());
-        response.setCreatedAt(order.getCreatedAt());
-        response.setShippingAddressId(order.getAddressId());
-
-        List<OrderResponse.OrderItemResponse> itemResponses = order.getItems().stream()
-                .map(item -> {
-                    OrderResponse.OrderItemResponse itemResponse = new OrderResponse.OrderItemResponse();
-                    itemResponse.setProductId(item.getProductId());
-                    itemResponse.setProductName(item.getProductName());
-                    itemResponse.setPrice(item.getPrice());
-                    itemResponse.setQuantity(item.getQuantity());
-                    itemResponse.setSubtotal(item.getSubtotal());
-                    return itemResponse;
-                })
-                .collect(Collectors.toList());
-
-        response.setItems(itemResponses);
-        response.setTotalAmount(order.getTotalAmount());
-        return response;
-    }
-
-    private OrderTrackingResponse convertToTrackingResponse(OrderTracking tracking) {
-        OrderTrackingResponse response = new OrderTrackingResponse();
-        response.setTrackingNumber(tracking.getTrackingNumber());
-        response.setCarrier(tracking.getCarrier());
-        response.setTrackingUrl(tracking.getTrackingUrl());
-        response.setCurrentStatus(tracking.getCurrentStatus());
-        response.setEstimatedDeliveryDate(tracking.getEstimatedDeliveryDate());
-        response.setActualDeliveryDate(tracking.getActualDeliveryDate());
-        response.setLastUpdated(tracking.getUpdatedAt());
-        return response;
-    }
-
-    private ReturnRequestResponse convertToReturnRequestResponse(ReturnRequest returnRequest) {
-        ReturnRequestResponse response = new ReturnRequestResponse();
-        response.setId(returnRequest.getId());
-        response.setOrderId(returnRequest.getOrder().getId().toString());
-        response.setReason(returnRequest.getReason());
-        response.setDescription(returnRequest.getDescription());
-        response.setStatus(returnRequest.getStatus());
-        response.setReturnLabelUrl(returnRequest.getReturnLabelUrl());
-        response.setRequestedAt(returnRequest.getRequestedAt());
-        response.setProcessedAt(returnRequest.getProcessedAt());
-        response.setCompletedAt(returnRequest.getCompletedAt());
-        return response;
-    }
-
-    private String generateTrackingUrl(String carrier, String trackingNumber) {
-        // In a real implementation, this would generate a carrier-specific tracking URL
-        return String.format("https://%s.com/track/%s", carrier.toLowerCase(), trackingNumber);
-    }
-
-    private String generateReturnLabel(ReturnRequest returnRequest) {
-        // In a real implementation, this would generate a return shipping label
-        return String.format("https://returns.example.com/label/%d", returnRequest.getId());
-    }
 }

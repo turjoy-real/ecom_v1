@@ -126,7 +126,7 @@
             <artifactId>spring-security-core</artifactId>
             <version>6.4.4</version>
         </dependency> -->
-
+   
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
@@ -147,13 +147,19 @@
             <scope>runtime</scope>
         </dependency>
         <dependency>
-    <groupId>com.fasterxml.jackson.core</groupId>
-    <artifactId>jackson-annotations</artifactId>
-</dependency>
-<dependency>
-    <groupId>com.fasterxml.jackson.core</groupId>
-    <artifactId>jackson-databind</artifactId>
-</dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <!-- Local Dependencies-->
+        <dependency>
+            <groupId>com.services</groupId>
+            <artifactId>common</artifactId>
+            <version>1.0.0</version>
+        </dependency>
     </dependencies>
 
     <build>

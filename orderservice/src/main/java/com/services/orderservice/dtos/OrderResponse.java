@@ -1,5 +1,6 @@
 package com.services.orderservice.dtos;
 
+import com.services.orderservice.models.OrderStatus;
 import com.services.orderservice.models.PaymentStatus;
 import lombok.Data;
 import java.time.LocalDateTime;
@@ -11,12 +12,13 @@ public class OrderResponse {
     private String userId;
     private List<OrderItemResponse> items;
     private double totalAmount;
-    private String status;
+    private OrderStatus status;
     private PaymentStatus paymentStatus;
     private LocalDateTime orderDate;
     private LocalDateTime createdAt;
     private String shippingAddressId;
     private String paymentMethod;
+    private String paymentLink;
 
     @Data
     public static class OrderItemResponse {

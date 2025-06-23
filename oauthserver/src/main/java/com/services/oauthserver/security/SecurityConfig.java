@@ -41,127 +41,137 @@ import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 @Configuration
 public class SecurityConfig {
 
-    @Bean
-    @Order(1)
-    public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http)
-            throws Exception {
-        OAuth2AuthorizationServerConfigurer authorizationServerConfigurer = OAuth2AuthorizationServerConfigurer
-                .authorizationServer();
+        @Bean
+        @Order(1)
+        public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http)
+                        throws Exception {
+                OAuth2AuthorizationServerConfigurer authorizationServerConfigurer = OAuth2AuthorizationServerConfigurer
+                                .authorizationServer();
 
-        http
-                .securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
-                .with(authorizationServerConfigurer, (authorizationServer) -> authorizationServer
-                        .oidc(withDefaults()))
-                .authorizeHttpRequests((authorize) -> authorize
-                        .requestMatchers("/oauth2/jwks", "/oauth2/authorization/**").permitAll()
-                        .anyRequest().authenticated())
-                .exceptionHandling((exceptions) -> exceptions
-                        .defaultAuthenticationEntryPointFor(
-                                new LoginUrlAuthenticationEntryPoint("/login"),
-                                new MediaTypeRequestMatcher(MediaType.TEXT_HTML)))
-                .cors(withDefaults())
-                .oauth2ResourceServer(config -> config.jwt(withDefaults()));
+                http
+                                .securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
+                                .with(authorizationServerConfigurer, (authorizationServer) -> authorizationServer
+                                                .oidc(withDefaults()))
+                                .authorizeHttpRequests((authorize) -> authorize
+                                                .requestMatchers("/oauth2/jwks", "/oauth2/authorization/**").permitAll()
+                                                .anyRequest().authenticated())
+                                .exceptionHandling((exceptions) -> exceptions
+                                                .defaultAuthenticationEntryPointFor(
+                                                                new LoginUrlAuthenticationEntryPoint("/login"),
+                                                                new MediaTypeRequestMatcher(MediaType.TEXT_HTML)))
+                                .cors(withDefaults())
+                                .oauth2ResourceServer(config -> config.jwt(withDefaults()));
 
-        return http.build();
-    }
+                return http.build();
+        }
 
-    @Bean
-    @Order(2)
-    public SecurityFilterChain clientAppSecurityFilterChain(HttpSecurity http)
-            throws Exception {
-        return http
-                .csrf(csrf -> csrf.disable())
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", // allow base URL
-                                "/index.html", // allow main HTML
-                                "/script.js",
-                                "/login", "/login/**", "/api/users/open/**", "/api/users/signup", "/html/**",
-                                "/api/users/logout",
-                                "/actuator/**")
+        @Bean
+        @Order(2)
+        public SecurityFilterChain clientAppSecurityFilterChain(HttpSecurity http)
+                        throws Exception {
+                return http
+                                .csrf(csrf -> csrf.disable())
+                                .authorizeHttpRequests(auth -> auth
+                                                .requestMatchers("/", // allow base URL
+                                                                "/index.html", // allow main HTML
+                                                                "/script.js",
+                                                                "/login", "/login/**", "/api/users/open/**",
+                                                                "/api/users/signup", "/html/**",
+                                                                "/api/users/logout",
+                                                                "/actuator/**")
 
-                        .permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/roles/**").hasRole("ADMIN") // allow role API
-                        .anyRequest().authenticated())
-                .formLogin(withDefaults())
-                .logout(logout -> logout
-                        .logoutUrl("/api/users/logout") // Ensure this matches your logout endpoint
-                        .invalidateHttpSession(true) // Invalidate the HTTP session
-                        .clearAuthentication(true) // Clear the security context
-                        .logoutSuccessHandler((request, response, authentication) -> {
-                            // Redirect to a safe page after logout, e.g., login page
-                            response.sendRedirect("/?logout=success");
-                        }))
-                .cors(withDefaults())
-                .build();
-    }
+                                                .permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/roles/**").hasRole("ADMIN") // allow
+                                                                                                                   // role
+                                                                                                                   // API
+                                                .anyRequest().authenticated())
+                                .formLogin(withDefaults())
+                                .logout(logout -> logout
+                                                .logoutUrl("/api/users/logout") // Ensure this matches your logout
+                                                                                // endpoint
+                                                .invalidateHttpSession(true) // Invalidate the HTTP session
+                                                .clearAuthentication(true) // Clear the security context
+                                                .logoutSuccessHandler((request, response, authentication) -> {
+                                                        // Redirect to a safe page after logout, e.g., login page
+                                                        response.sendRedirect("/?logout=success");
+                                                }))
+                                .cors(withDefaults())
+                                .build();
+        }
 
-    @Bean
-    public OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer() {
-        return (context) -> {
-            if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) {
-                context.getClaims().claims((claims) -> {
-                    Set<String> roles = AuthorityUtils.authorityListToSet(context.getPrincipal().getAuthorities())
-                            .stream()
-                            .map(c -> c.replaceFirst("^ROLE_", ""))
-                            .collect(Collectors.collectingAndThen(Collectors.toSet(),
-                                    Collections::unmodifiableSet));
-                                    Object principal = context.getPrincipal().getPrincipal();
+        @Bean
+        public OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer() {
+                return (context) -> {
+                        if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) {
+                                context.getClaims().claims((claims) -> {
+                                        Set<String> roles = AuthorityUtils
+                                                        .authorityListToSet(context.getPrincipal().getAuthorities())
+                                                        .stream()
+                                                        .map(c -> c.replaceFirst("^ROLE_", ""))
+                                                        .collect(Collectors.collectingAndThen(Collectors.toSet(),
+                                                                        Collections::unmodifiableSet));
+                                        Object principal = context.getPrincipal().getPrincipal();
 
-                                    if (principal instanceof CustomUserDetails customUser) {
-                                        User user = customUser.getUser();
-                    
-                                        claims.put("sub", user.getId().toString());        // ✅ UUID as subject
-                                        claims.put("user_id", user.getEmail());            // ✅ Optional email
-                                        claims.put("roles", roles);
-                                    }
-                });
-            }
-        };
-    }
+                                        if (principal instanceof CustomUserDetails customUser) {
+                                                User user = customUser.getUser();
 
-    @Bean
-    public CommandLineRunner registerClient(RegisteredClientRepository repository, PasswordEncoder passwordEncoder) {
-        return args -> {
-            String clientId1 = "spa-client";
-            // String clientId2 = "oidc-client";
+                                                claims.put("sub", user.getId().toString()); // ✅ UUID as subject
+                                                claims.put("user_email", user.getEmail()); // ✅ Optional email
+                                                claims.put("roles", roles);
+                                        }
+                                });
+                        }
+                };
+        }
 
-            RegisteredClient existing1 = repository.findByClientId(clientId1);
-            // RegisteredClient existing2 = repository.findByClientId(clientId2);
-            if (existing1 != null) {
-                System.out.println("✅ Client already registered: " + clientId1);
-                return;
-            }
+        @Bean
+        public CommandLineRunner registerClient(RegisteredClientRepository repository,
+                        PasswordEncoder passwordEncoder) {
+                return args -> {
+                        String clientId1 = "spa-client";
+                        // String clientId2 = "oidc-client";
 
-            if (existing1 == null) {
+                        RegisteredClient existing1 = repository.findByClientId(clientId1);
+                        // RegisteredClient existing2 = repository.findByClientId(clientId2);
+                        if (existing1 != null) {
+                                System.out.println("✅ Client already registered: " + clientId1);
+                                return;
+                        }
 
-                RegisteredClient registeredClient1 = RegisteredClient.withId(UUID.randomUUID().toString())
-                        .clientId("spa-client")
-                        .redirectUri("http://localhost:9001/") // hosted inside the auth server
-                        .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                        .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN) // ✅ must allow this
-                        .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
-                        .scope(OidcScopes.OPENID)
-                        .scope(OidcScopes.PROFILE)
-                        .scope("read")
-                        .scope("write")
-                        .scope("offline_access") // ✅ for refresh token
-                        .clientSettings(ClientSettings.builder()
-                                .requireProofKey(true) // PKCE
-                                .requireAuthorizationConsent(true)
-                                .build())
-                        .tokenSettings(TokenSettings.builder()
-                                .accessTokenTimeToLive(Duration.ofMinutes(60))
-                                .refreshTokenTimeToLive(Duration.ofDays(30))
-                                .reuseRefreshTokens(false) // new refresh token each time
-                                .idTokenSignatureAlgorithm(SignatureAlgorithm.RS256)
-                                .build())
-                        .build();
+                        if (existing1 == null) {
 
-                repository.save(registeredClient1);
-            }
+                                RegisteredClient registeredClient1 = RegisteredClient
+                                                .withId(UUID.randomUUID().toString())
+                                                .clientId("spa-client")
+                                                .redirectUri("http://localhost:9001/") // hosted inside the auth server
+                                                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                                                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN) // ✅ must
+                                                                                                              // allow
+                                                                                                              // this
+                                                .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+                                                .scope(OidcScopes.OPENID)
+                                                .scope(OidcScopes.PROFILE)
+                                                .scope("read")
+                                                .scope("write")
+                                                .scope("offline_access") // ✅ for refresh token
+                                                .clientSettings(ClientSettings.builder()
+                                                                .requireProofKey(true) // PKCE
+                                                                .requireAuthorizationConsent(true)
+                                                                .build())
+                                                .tokenSettings(TokenSettings.builder()
+                                                                .accessTokenTimeToLive(Duration.ofMinutes(60))
+                                                                .refreshTokenTimeToLive(Duration.ofDays(30))
+                                                                .reuseRefreshTokens(false) // new refresh token each
+                                                                                           // time
+                                                                .idTokenSignatureAlgorithm(SignatureAlgorithm.RS256)
+                                                                .build())
+                                                .build();
 
-            System.out.println("✅ OAuth2 client registered: " + clientId1);
-        };
-    }
+                                repository.save(registeredClient1);
+                        }
+
+                        System.out.println("✅ OAuth2 client registered: " + clientId1);
+                };
+        }
 
 }

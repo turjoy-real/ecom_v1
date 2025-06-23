@@ -1,7 +1,7 @@
 package com.services.userservice.controllers;
 
+import com.services.common.dtos.UserDTO;
 import com.services.userservice.dtos.ProfileUpdateRequest;
-import com.services.userservice.dtos.UserDTO;
 import com.services.userservice.services.ProfileService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -21,8 +21,8 @@ public class UserProfileController {
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<UserDTO> getMyProfile(Authentication authentication) {
-        String email = authentication.getName();
-        return ResponseEntity.ok(profileService.getUserProfile(email));
+        String id = authentication.getName();
+        return ResponseEntity.ok(profileService.getUserProfile(id));
     }
 
     @PatchMapping

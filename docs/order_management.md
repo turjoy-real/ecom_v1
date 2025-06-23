@@ -1,50 +1,106 @@
 # 3. Order Management Module
 
-## 3.1 Transaction Management
+## 3.1 Order Processing
 
-### 3.1.1 Saga Pattern Implementation
+### 3.1.1 Order Creation and Management
 
 ```java
 @Service
-public class OrderSagaManager {
-    private final OrderService orderService;
-    private final PaymentService paymentService;
-    private final InventoryService inventoryService;
+public class OrderService {
 
     @Transactional
-    public void processOrder(OrderRequest request) {
-        // 1. Create Order
-        Order order = orderService.createOrder(request);
+    public OrderResponse createOrder(OrderRequest request) {
+        // Validate order request
+        validateOrderRequest(request);
 
-        try {
-            // 2. Reserve Inventory
-            inventoryService.reserveItems(order.getItems());
+        // Create order with items
+        Order order = Order.builder()
+                .userId(request.getUserId())
+                .items(createOrderItems(request.getItems()))
+                .totalAmount(calculateTotalAmount(request.getItems()))
+                .status(OrderStatus.CREATED)
+                .paymentStatus(PaymentStatus.PENDING)
+                .orderDate(LocalDateTime.now())
+                .addressId(request.getAddressId())
+                .build();
 
-            // 3. Process Payment
-            PaymentResult payment = paymentService.processPayment(order);
-
-            if (payment.isSuccessful()) {
-                // 4. Confirm Order
-                orderService.confirmOrder(order.getId());
-            } else {
-                // 5. Compensate
-                compensateOrder(order);
-            }
-        } catch (Exception e) {
-            // 6. Compensate on failure
-            compensateOrder(order);
-            throw e;
-        }
+        Order savedOrder = orderRepository.save(order);
+        return mapToOrderResponse(savedOrder);
     }
 
-    private void compensateOrder(Order order) {
-        try {
-            inventoryService.releaseItems(order.getItems());
-            paymentService.refundPayment(order.getPaymentId());
-            orderService.cancelOrder(order.getId());
-        } catch (Exception e) {
-            // Log compensation failure
-            log.error("Compensation failed for order: {}", order.getId(), e);
+    private List<OrderItem> createOrderItems(List<OrderItemRequest> itemRequests) {
+        return itemRequests.stream()
+                .map(this::createOrderItem)
+                .collect(Collectors.toList());
+    }
+
+    private OrderItem createOrderItem(OrderItemRequest itemRequest) {
+        // Verify product exists and has sufficient stock
+        ProductDetails product = productServiceClient.getProductDetails(itemRequest.getProductId());
+        if (product.getStockQuantity() < itemRequest.getQuantity()) {
+            throw new InsufficientStockException("Insufficient stock for product: " + itemRequest.getProductId());
+        }
+
+        return OrderItem.builder()
+                .productId(itemRequest.getProductId())
+                .quantity(itemRequest.getQuantity())
+                .price(product.getPrice())
+                .build();
+    }
+}
+```
+
+---
+
+## 3.2 Order Status Management
+
+### 3.2.1 Order Status Flow
+
+```java
+public enum OrderStatus {
+    CREATED,
+    PAYMENT_PENDING,
+    PAYMENT_COMPLETED,
+    PROCESSING,
+    SHIPPED,
+    DELIVERED,
+    CANCELLED,
+    RETURNED
+}
+
+public enum PaymentStatus {
+    PENDING,
+    COMPLETED,
+    FAILED,
+    REFUNDED
+}
+
+@Service
+public class OrderService {
+
+    @Transactional
+    public OrderResponse updateOrderStatus(Long orderId, String status) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException("Order not found: " + orderId));
+
+        OrderStatus newStatus = OrderStatus.valueOf(status.toUpperCase());
+        validateStatusTransition(order.getStatus(), newStatus);
+
+        order.setStatus(newStatus);
+        order.setUpdatedAt(LocalDateTime.now());
+
+        Order savedOrder = orderRepository.save(order);
+        return mapToOrderResponse(savedOrder);
+    }
+
+    private void validateStatusTransition(OrderStatus currentStatus, OrderStatus newStatus) {
+        // Implement status transition validation logic
+        if (currentStatus == OrderStatus.CANCELLED && newStatus != OrderStatus.CANCELLED) {
+            throw new InvalidStatusTransitionException("Cannot change status of cancelled order");
+        }
+
+        if (currentStatus == OrderStatus.DELIVERED && newStatus != OrderStatus.RETURNED) {
+            throw new InvalidStatusTransitionException("Delivered order can only be returned");
         }
     }
 }
@@ -52,85 +108,37 @@ public class OrderSagaManager {
 
 ---
 
-## 3.2 State Management
+## 3.3 API Endpoints
 
-### 3.2.1 Order State Machine
-
-```java
-@Configuration
-@EnableStateMachineFactory
-public class OrderStateMachineConfig extends StateMachineConfigurerAdapter<OrderStatus, OrderEvent> {
-
-    @Override
-    public void configure(StateMachineStateConfigurer<OrderStatus, OrderEvent> states) throws Exception {
-        states
-            .withStates()
-            .initial(OrderStatus.CREATED)
-            .state(OrderStatus.PAYMENT_PENDING)
-            .state(OrderStatus.PAYMENT_COMPLETED)
-            .state(OrderStatus.INVENTORY_RESERVED)
-            .state(OrderStatus.SHIPPED)
-            .state(OrderStatus.DELIVERED)
-            .state(OrderStatus.CANCELLED);
-    }
-
-    @Override
-    public void configure(StateMachineTransitionConfigurer<OrderStatus, OrderEvent> transitions) throws Exception {
-        transitions
-            .withExternal()
-                .source(OrderStatus.CREATED)
-                .target(OrderStatus.PAYMENT_PENDING)
-                .event(OrderEvent.PAYMENT_INITIATED)
-            .and()
-            .withExternal()
-                .source(OrderStatus.PAYMENT_PENDING)
-                .target(OrderStatus.PAYMENT_COMPLETED)
-                .event(OrderEvent.PAYMENT_COMPLETED)
-            // ... more transitions
-    }
-}
-```
-
----
-
-### References
-
-- [Spring State Machine](https://spring.io/projects/spring-statemachine)
-- [Saga Pattern](https://microservices.io/patterns/data/saga.html)
-- [Spring Data JPA](https://spring.io/projects/spring-data-jpa)
-
-## Implemented Features
-
-### 1. Order Creation
+### 3.3.1 Order Management Endpoints
 
 ```java
+@RestController
+@RequestMapping("/api/orders")
+public class OrderController {
+
+    // Create new order
 @PostMapping
-public ResponseEntity<OrderResponse> createOrder(@RequestBody OrderRequest request) {
-    return ResponseEntity.ok(orderService.createOrder(request));
-}
-```
+    public ResponseEntity<OrderResponse> createOrder(@RequestBody OrderRequest request)
 
-- Creates new order with items
-- Verifies product stock availability
-- Calculates total amount
-- Associates shipping address
-- Sets initial order status
-
-### 2. Order Retrieval
-
-```java
+    // Get order by ID
 @GetMapping("/{orderId}")
-public ResponseEntity<OrderResponse> getOrder(@PathVariable Long orderId) {
-    return ResponseEntity.ok(orderService.getOrder(orderId));
-}
-```
+    public ResponseEntity<OrderResponse> getOrder(@PathVariable Long orderId)
 
-- Retrieves order by ID
-- Includes order items, status, and payment details
+    // Get user's orders with filtering
+    @GetMapping("/my")
+    public ResponseEntity<List<OrderResponse>> getMyOrders(
+            Authentication authentication,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String paymentStatus,
+            @RequestParam(required = false, defaultValue = "orderDate") String sortBy,
+            @RequestParam(required = false, defaultValue = "desc") String sortDirection)
 
-### 3. User Orders
+    // Get user's order analytics
+    @GetMapping("/my/analytics")
+    public ResponseEntity<Map<String, Object>> getMyOrderAnalytics(Authentication authentication)
 
-```java
+    // Get orders for specific user (admin only)
 @GetMapping("/user/{userId}")
 public ResponseEntity<List<OrderResponse>> getUserOrders(
     @PathVariable String userId,
@@ -138,41 +146,64 @@ public ResponseEntity<List<OrderResponse>> getUserOrders(
     @RequestParam(required = false) String paymentStatus,
     @RequestParam(required = false, defaultValue = "orderDate") String sortBy,
     @RequestParam(required = false, defaultValue = "desc") String sortDirection)
-```
 
-- Lists all orders for a user
-- Supports filtering by status and payment status
-- Supports sorting by:
-  - Order date
-  - Total amount
-  - Status
-  - Payment status
-
-### 4. Order Status Management
-
-```java
+    // Update order status
 @PatchMapping("/{orderId}/status")
 public ResponseEntity<OrderResponse> updateOrderStatus(
     @PathVariable Long orderId,
     @RequestParam String status)
+
+    // Cancel order
+    @PostMapping("/{orderId}/cancel")
+    public ResponseEntity<Void> cancelOrder(@PathVariable Long orderId)
+}
 ```
 
-- Updates order status
-- Supports status transitions
-
-### 5. Order Cancellation
+### 3.3.2 Order Tracking Endpoints
 
 ```java
-@PostMapping("/{orderId}/cancel")
-public ResponseEntity<Void> cancelOrder(@PathVariable Long orderId)
+// Get order tracking information
+@GetMapping("/{orderId}/tracking")
+public ResponseEntity<OrderTrackingResponse> getOrderTracking(@PathVariable Long orderId)
+
+// Update order tracking information
+@PostMapping("/{orderId}/tracking")
+public ResponseEntity<OrderTrackingResponse> updateOrderTracking(
+        @PathVariable Long orderId,
+        @RequestParam String trackingNumber,
+        @RequestParam String carrier)
 ```
 
-- Cancels existing orders
-- Handles cancellation logic
+### 3.3.3 Return Management Endpoints
 
-## Data Model
+```java
+// Create return request
+@PostMapping("/{orderId}/return")
+public ResponseEntity<ReturnRequestResponse> createReturnRequest(
+        @PathVariable Long orderId,
+        @RequestBody ReturnRequestDTO request)
 
-### Order Entity
+// Get return request details
+@GetMapping("/returns/{returnId}")
+public ResponseEntity<ReturnRequestResponse> getReturnRequest(@PathVariable Long returnId)
+
+// Update return status
+@PatchMapping("/returns/{returnId}/status")
+public ResponseEntity<ReturnRequestResponse> updateReturnStatus(
+        @PathVariable Long returnId,
+        @RequestParam String status)
+
+// Get return requests by status
+@GetMapping("/returns")
+public ResponseEntity<List<ReturnRequestResponse>> getReturnRequestsByStatus(
+        @RequestParam(required = false, defaultValue = "PENDING") String status)
+```
+
+---
+
+## 3.4 Data Model
+
+### 3.4.1 Order Entity
 
 ```java
 @Entity
@@ -181,85 +212,242 @@ public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(nullable = false)
     private String userId;
 
-    @OneToMany(cascade = CascadeType.ALL, mappedBy = "order")
-    private List<OrderItem> items;
+    @OneToMany(cascade = CascadeType.ALL, mappedBy = "order", orphanRemoval = true)
+    private List<OrderItem> items = new ArrayList<>();
 
+    @Column(nullable = false)
     private double totalAmount;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private OrderStatus status;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private PaymentStatus paymentStatus;
 
+    @Column(nullable = false)
     private LocalDateTime orderDate;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    @Column(nullable = false)
     private String addressId;
 
-    @Column(nullable = true)
-    private String paymentMethod;
+    // Tracking information
+    private String trackingNumber;
+    private String carrier;
+    private LocalDateTime shippedDate;
+    private LocalDateTime deliveredDate;
+
+    // Helper methods
+    public void addItem(OrderItem item) {
+        items.add(item);
+        item.setOrder(this);
+}
+
+    public void removeItem(OrderItem item) {
+        items.remove(item);
+        item.setOrder(null);
+    }
+
+    public double calculateTotalAmount() {
+        return items.stream()
+                .mapToDouble(OrderItem::getSubtotal)
+                .sum();
+    }
 }
 ```
 
-## Pending Implementation
+### 3.4.2 Order Item Entity
 
-### 1. Order Tracking
+```java
+@Entity
+@Table(name = "order_items")
+public class OrderItem {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-- [ ] Order tracking number generation
-- [ ] Delivery status updates
-- [ ] Tracking information API endpoints
-- [ ] Integration with shipping providers
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_id", nullable = false)
+    private Order order;
 
-### 2. Order Notifications
+    @Column(nullable = false)
+    private Long productId;
 
-- [ ] Email notifications for order status changes
-- [ ] SMS notifications for critical updates
-- [ ] Push notifications for mobile app
+    @Column(nullable = false)
+    private Integer quantity;
 
-### 3. Order Analytics
+    @Column(nullable = false)
+    private Double price;
 
-- [ ] Order statistics and metrics
-- [ ] Sales reports
-- [ ] Customer order history analysis
+    // Helper methods
+    public double getSubtotal() {
+        return price * quantity;
+    }
+}
+```
 
-### 4. Order Returns & Refunds
+### 3.4.3 Return Request Entity
 
-- [ ] Return request processing
-- [ ] Refund processing
-- [ ] Return shipping label generation
-- [ ] Return status tracking
+```java
+@Entity
+@Table(name = "return_requests")
+public class ReturnRequest {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-### 5. Order Export
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_id", nullable = false)
+    private Order order;
 
-- [ ] Export orders to CSV/Excel
-- [ ] Bulk order operations
-- [ ] Order data backup
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ReturnStatus status;
 
-### 6. Advanced Features
+    @Column(nullable = false)
+    private String reason;
 
-- [ ] Order splitting for multiple shipments
-- [ ] Partial order cancellation
-- [ ] Order modification after placement
-- [ ] Reorder functionality
+    private String description;
+    private LocalDateTime requestedDate;
+    private LocalDateTime processedDate;
+    private String adminNotes;
+}
+```
 
-## API Endpoints
+---
 
-### Implemented Endpoints
+## 3.5 Business Logic
 
-1. `POST /api/orders` - Create new order
-2. `GET /api/orders/{orderId}` - Get order by ID
-3. `GET /api/orders/user/{userId}` - Get user's orders
-4. `PATCH /api/orders/{orderId}/status` - Update order status
-5. `POST /api/orders/{orderId}/cancel` - Cancel order
+### 3.5.1 Order Validation
 
-### Pending Endpoints
+```java
+@Service
+public class OrderValidationService {
 
-1. `GET /api/orders/{orderId}/tracking` - Get order tracking info
-2. `POST /api/orders/{orderId}/return` - Initiate return
-3. `GET /api/orders/analytics` - Get order analytics
-4. `POST /api/orders/export` - Export orders
-5. `PATCH /api/orders/{orderId}/modify` - Modify order
-6. `POST /api/orders/{orderId}/reorder` - Reorder items
+    public void validateOrderRequest(OrderRequest request) {
+        if (request.getUserId() == null || request.getUserId().trim().isEmpty()) {
+            throw new InvalidOrderRequestException("User ID is required");
+        }
+
+        if (request.getItems() == null || request.getItems().isEmpty()) {
+            throw new InvalidOrderRequestException("Order must contain at least one item");
+        }
+
+        if (request.getAddressId() == null || request.getAddressId().trim().isEmpty()) {
+            throw new InvalidOrderRequestException("Shipping address is required");
+        }
+
+        // Validate each item
+        request.getItems().forEach(this::validateOrderItem);
+    }
+
+    private void validateOrderItem(OrderItemRequest item) {
+        if (item.getProductId() == null) {
+            throw new InvalidOrderRequestException("Product ID is required for all items");
+        }
+
+        if (item.getQuantity() == null || item.getQuantity() <= 0) {
+            throw new InvalidOrderRequestException("Quantity must be greater than 0");
+        }
+    }
+}
+```
+
+### 3.5.2 Order Analytics
+
+```java
+@Service
+public class OrderAnalyticsService {
+
+    public Map<String, Object> getOrderAnalytics(String userId) {
+        List<Order> userOrders = orderRepository.findByUserId(userId);
+
+        Map<String, Object> analytics = new HashMap<>();
+        analytics.put("totalOrders", userOrders.size());
+        analytics.put("totalSpent", userOrders.stream()
+                .mapToDouble(Order::getTotalAmount)
+                .sum());
+        analytics.put("averageOrderValue", userOrders.stream()
+                .mapToDouble(Order::getTotalAmount)
+                .average()
+                .orElse(0.0));
+
+        // Status distribution
+        Map<OrderStatus, Long> statusDistribution = userOrders.stream()
+                .collect(Collectors.groupingBy(Order::getStatus, Collectors.counting()));
+        analytics.put("statusDistribution", statusDistribution);
+
+        // Recent orders
+        List<Order> recentOrders = userOrders.stream()
+                .sorted(Comparator.comparing(Order::getOrderDate).reversed())
+                .limit(5)
+                .collect(Collectors.toList());
+        analytics.put("recentOrders", recentOrders.stream()
+                .map(this::mapToOrderResponse)
+                .collect(Collectors.toList()));
+
+        return analytics;
+    }
+}
+```
+
+---
+
+## 3.6 Integration Features
+
+### 3.6.1 Service Communication
+
+```java
+@FeignClient(name = "product-service")
+public interface ProductServiceClient {
+    @GetMapping("/api/products/{id}")
+    ProductDetails getProductDetails(@PathVariable("id") Long productId);
+
+    @GetMapping("/api/products/{id}/verify-stock")
+    boolean verifyStock(@PathVariable("id") Long productId, @RequestParam int quantity);
+}
+
+@FeignClient(name = "payment-service")
+public interface PaymentServiceClient {
+    @PostMapping("/api/payment/create-link")
+    String createPaymentLink(@RequestBody CreatePaymentLinkRequestDto request);
+}
+```
+
+---
+
+## 3.7 Future Enhancements
+
+### 3.7.1 Planned Features
+
+- [ ] **Saga Pattern Implementation:** Distributed transaction management
+- [ ] **State Machine:** Advanced order state management
+- [ ] **Order Analytics Dashboard:** Comprehensive analytics and reporting
+- [ ] **Automated Order Processing:** Workflow automation
+- [ ] **Advanced Return Management:** Streamlined return process
+- [ ] **Order Notification System:** Real-time notifications
+- [ ] **Order Export Functionality:** Data export capabilities
+- [ ] **Bulk Order Operations:** Batch processing capabilities
+
+### 3.7.2 Performance Optimizations
+
+- [ ] **Caching Layer:** Redis integration for order data
+- [ ] **Database Indexing:** Optimize query performance
+- [ ] **Pagination:** Efficient handling of large order datasets
+- [ ] **Connection Pooling:** Optimize database connections
+
+---
+
+### References
+
+- [Spring Data JPA](https://spring.io/projects/spring-data-jpa)
+- [Spring Cloud OpenFeign](https://spring.io/projects/spring-cloud-openfeign)
+- [Spring Transaction Management](https://docs.spring.io/spring-framework/docs/current/reference/html/data-access.html#transaction)

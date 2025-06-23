@@ -1,7 +1,7 @@
 package com.services.userservice.controllers;
 
-import com.services.userservice.dtos.AddressDTO;
-import com.services.userservice.models.User;
+import com.services.common.dtos.AddressDTO;
+
 import com.services.userservice.repositories.UserRepo;
 import com.services.userservice.services.AddressService;
 import org.springframework.http.ResponseEntity;
@@ -16,15 +16,12 @@ import java.util.List;
 @PreAuthorize("isAuthenticated()")
 public class AddressController {
     private final AddressService addressService;
-    private final UserRepo userRepo;
 
     public AddressController(AddressService addressService, UserRepo userRepo) {
         this.addressService = addressService;
-        this.userRepo = userRepo;
     }
 
     private Long getUserId(Authentication authentication) {
-        // Assuming the principal's name is the userId as a String
         return Long.parseLong(authentication.getName());
     }
 
@@ -46,6 +43,10 @@ public class AddressController {
     @PostMapping
     public ResponseEntity<AddressDTO> addAddress(Authentication authentication, @RequestBody AddressDTO dto) {
         Long userId = getUserId(authentication);
+        if (dto.getStreetAddress() == null || dto.getCity() == null || dto.getState() == null
+                || dto.getZipCode() == null) {
+            return ResponseEntity.badRequest().body(null);
+        }
         AddressDTO created = addressService.addAddress(userId, dto);
         return ResponseEntity.ok(created);
     }

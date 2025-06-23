@@ -42,6 +42,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Page<Product> findByCategory(Category category, Pageable pageable);
     List<Product> findByBrand(String brand);
     List<Product> findByNameContainingIgnoreCase(String keyword);
+    Page<Product> findByStockQuantityGreaterThanEqual(Integer minQuantity, Pageable pageable);
+    Page<Product> findByPriceBetween(Double minPrice, Double maxPrice, Pageable pageable);
 }
 ```
 
@@ -49,42 +51,27 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
 - **Pagination Support:** Efficient handling of large datasets, memory optimization, and better user experience.
 - **Dynamic Queries:** Flexible search capabilities, case-insensitive and partial text matching.
+- **Range Queries:** Price range and stock quantity filtering.
+- **Category-based Filtering:** Products filtered by category with pagination.
 
 ---
 
 ## 1.2 Search Implementation
 
-### 1.2.1 Elasticsearch Integration
+### 1.2.1 JPA-Based Search (Current Implementation)
+
+The current implementation uses Spring Data JPA for search functionality, providing:
+
+- **Full-text search** using JPA criteria queries
+- **Multiple search criteria** support
+- **Pagination** for all search operations
+- **Case-insensitive** search
+- **Dynamic query building** based on provided parameters
 
 ```java
-@Document(indexName = "products")
-public class ProductDocument {
-    @Id
-    private Long id;
+@Service
+public class ProductService {
 
-    @Field(type = FieldType.Text, analyzer = "standard")
-    private String name;
-
-    @Field(type = FieldType.Text, analyzer = "standard")
-    private String description;
-
-    @Field(type = FieldType.Keyword)
-    private String brand;
-
-    @Field(type = FieldType.Double)
-    private Double price;
-
-    @Field(type = FieldType.Integer)
-    private Integer stockQuantity;
-}
-```
-
-**Search Features:**
-
-- **Full-Text Search:** Standard analyzer for text fields, keyword fields for exact matching, numeric fields for range queries.
-- **Advanced Queries:**
-
-```java
 public Page<ProductResponse> searchByMultipleCriteria(
         String categoryName,
         String brand,
@@ -93,32 +80,156 @@ public Page<ProductResponse> searchByMultipleCriteria(
         int pageNumber,
         int pageSize) {
 
-    BoolQueryBuilder query = QueryBuilders.boolQuery();
+        Specification<Product> spec = Specification.where(null);
 
     if (categoryName != null) {
-        query.must(QueryBuilders.matchQuery("category.name", categoryName));
+            spec = spec.and((root, query, cb) ->
+                cb.like(cb.lower(root.get("category").get("name")),
+                       "%" + categoryName.toLowerCase() + "%"));
     }
 
     if (brand != null) {
-        query.must(QueryBuilders.termQuery("brand", brand));
+            spec = spec.and((root, query, cb) ->
+                cb.like(cb.lower(root.get("brand")),
+                       "%" + brand.toLowerCase() + "%"));
     }
 
     if (minPrice != null || maxPrice != null) {
-        RangeQueryBuilder priceRange = QueryBuilders.rangeQuery("price");
-        if (minPrice != null) priceRange.gte(minPrice);
-        if (maxPrice != null) priceRange.lte(maxPrice);
-        query.must(priceRange);
-    }
+            spec = spec.and((root, query, cb) -> {
+                if (minPrice != null && maxPrice != null) {
+                    return cb.between(root.get("price"), minPrice, maxPrice);
+                } else if (minPrice != null) {
+                    return cb.greaterThanOrEqualTo(root.get("price"), minPrice);
+                } else {
+                    return cb.lessThanOrEqualTo(root.get("price"), maxPrice);
+                }
+            });
+        }
 
-    return productElasticsearchRepository.search(query, PageRequest.of(pageNumber, pageSize));
+        return productRepository.findAll(spec, PageRequest.of(pageNumber, pageSize))
+                .map(this::mapToProductResponse);
+    }
 }
+```
+
+**Search Features:**
+
+- **Keyword Search:** Full-text search across product name and description
+- **Category Filtering:** Filter products by category name
+- **Brand Filtering:** Filter products by brand
+- **Price Range Filtering:** Filter products by price range
+- **Stock Availability:** Filter products by minimum stock quantity
+- **Advanced Multi-criteria Search:** Combine multiple search criteria
+- **Pagination:** All search results support pagination
+
+---
+
+## 1.3 API Endpoints
+
+### 1.3.1 Product Management
+
+```java
+@RestController
+@RequestMapping("/api/products")
+public class ProductController {
+
+    // Create new product
+    @PostMapping
+    public ResponseEntity<ProductResponse> createProduct(@RequestBody ProductRequest request)
+
+    // Get all products with pagination
+    @GetMapping
+    public ResponseEntity<List<ProductResponse>> getAllProducts(
+            @RequestParam(defaultValue = "0") int pageNumber,
+            @RequestParam(defaultValue = "10") int pageSize)
+
+    // Get product by ID
+    @GetMapping("/{id}")
+    public ResponseEntity<ProductResponse> getProductById(@PathVariable Long id)
+
+    // Verify stock availability
+    @GetMapping("/{id}/verify-stock")
+    public ResponseEntity<Boolean> verifyStock(@PathVariable Long id, @RequestParam int quantity)
+
+    // Update product
+    @PatchMapping("/{id}")
+    public ResponseEntity<Void> updateProduct(@PathVariable Long id, @RequestBody ProductRequest request)
+
+    // Delete product
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteProduct(@PathVariable Long id)
+}
+```
+
+### 1.3.2 Search Endpoints
+
+```java
+// Keyword search
+@GetMapping("/search")
+public ResponseEntity<Page<ProductResponse>> searchProducts(
+        @RequestParam String keyword,
+        @RequestParam(defaultValue = "0") int pageNumber,
+        @RequestParam(defaultValue = "10") int pageSize)
+
+// Category-based search
+@GetMapping("/search/category")
+public ResponseEntity<Page<ProductResponse>> searchByCategory(
+        @RequestParam String categoryName,
+        @RequestParam(defaultValue = "0") int pageNumber,
+        @RequestParam(defaultValue = "10") int pageSize)
+
+// Brand-based search
+@GetMapping("/search/brand")
+public ResponseEntity<Page<ProductResponse>> searchByBrand(
+        @RequestParam String brand,
+        @RequestParam(defaultValue = "0") int pageNumber,
+        @RequestParam(defaultValue = "10") int pageSize)
+
+// Price range search
+@GetMapping("/search/price")
+public ResponseEntity<Page<ProductResponse>> searchByPriceRange(
+        @RequestParam Double minPrice,
+        @RequestParam Double maxPrice,
+        @RequestParam(defaultValue = "0") int pageNumber,
+        @RequestParam(defaultValue = "10") int pageSize)
+
+// Advanced multi-criteria search
+@GetMapping("/search/advanced")
+public ResponseEntity<Page<ProductResponse>> searchByMultipleCriteria(
+        @RequestParam(required = false) String categoryName,
+        @RequestParam(required = false) String brand,
+        @RequestParam(required = false) Double minPrice,
+        @RequestParam(required = false) Double maxPrice,
+        @RequestParam(defaultValue = "0") int pageNumber,
+        @RequestParam(defaultValue = "10") int pageSize)
+
+// Stock availability search
+@GetMapping("/search/stock")
+public ResponseEntity<Page<ProductResponse>> searchByStockAvailability(
+        @RequestParam Integer minQuantity,
+        @RequestParam(defaultValue = "0") int pageNumber,
+        @RequestParam(defaultValue = "10") int pageSize)
+
+// Full-text search
+@GetMapping("/search/full-text")
+public ResponseEntity<Page<ProductResponse>> fullTextSearch(
+        @RequestParam String text,
+        @RequestParam(defaultValue = "0") int pageNumber,
+        @RequestParam(defaultValue = "10") int pageSize)
+
+// Get products by category
+@GetMapping("/category/{category}")
+public ResponseEntity<Page<ProductResponse>> getProductsByCategory(
+        @PathVariable String category,
+        @RequestParam(defaultValue = "0") int pageNumber,
+        @RequestParam(defaultValue = "10") int pageSize)
 ```
 
 ---
 
-## 1.3 Caching Strategy
+## 1.4 Caching Strategy
 
-### 1.3.1 Redis Implementation
+### 1.4.1 Redis Implementation (Planned)
 
 ```java
 @Service
@@ -155,8 +266,56 @@ public class CacheService {
 
 ---
 
+## 1.5 Future Enhancements
+
+### 1.5.1 Elasticsearch Integration (Planned)
+
+```java
+@Document(indexName = "products")
+public class ProductDocument {
+    @Id
+    private Long id;
+
+    @Field(type = FieldType.Text, analyzer = "standard")
+    private String name;
+
+    @Field(type = FieldType.Text, analyzer = "standard")
+    private String description;
+
+    @Field(type = FieldType.Keyword)
+    private String brand;
+
+    @Field(type = FieldType.Double)
+    private Double price;
+
+    @Field(type = FieldType.Integer)
+    private Integer stockQuantity;
+}
+```
+
+**Planned Search Features:**
+
+- **Advanced Full-Text Search:** Elasticsearch integration for better search performance
+- **Fuzzy Search:** Typo-tolerant search capabilities
+- **Aggregations:** Faceted search and filtering
+- **Search Suggestions:** Auto-complete functionality
+- **Search Analytics:** Search behavior tracking
+
+### 1.5.2 Additional Features
+
+- [ ] Product image management service
+- [ ] Product variant handling (size, color, etc.)
+- [ ] Real-time inventory management
+- [ ] Product recommendation system
+- [ ] Product reviews and ratings
+- [ ] Product import/export functionality
+- [ ] Bulk product operations
+- [ ] Product analytics and reporting
+
+---
+
 ### References
 
 - [Spring Data JPA](https://spring.io/projects/spring-data-jpa)
-- [Spring Data Elasticsearch](https://spring.io/projects/spring-data-elasticsearch)
+- [Spring Data Elasticsearch](https://spring.io/projects/spring-data-elasticsearch) (for future implementation)
 - [Redis Caching in Spring](https://docs.spring.io/spring-data/redis/docs/current/reference/html/#reference)
