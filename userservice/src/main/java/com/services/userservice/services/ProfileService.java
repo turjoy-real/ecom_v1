@@ -4,11 +4,9 @@ import com.services.common.dtos.UserDTO;
 import com.services.userservice.dtos.ProfileUpdateRequest;
 import com.services.userservice.dtos.UserMapper;
 import com.services.userservice.exceptions.UserNotFound;
-import com.services.userservice.models.Role;
+
 import com.services.userservice.models.User;
 import com.services.userservice.repositories.UserRepo;
-
-import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

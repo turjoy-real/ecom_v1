@@ -4,7 +4,12 @@ import com.services.userservice.models.Role;
 import com.services.userservice.models.User;
 import com.services.userservice.repositories.RoleRepository;
 import com.services.userservice.repositories.UserRepo;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+
 import com.services.userservice.exceptions.RoleNotFound;
+import com.services.userservice.exceptions.SimilarValuePresent;
 import com.services.userservice.exceptions.UserNotFound;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,7 +29,7 @@ public class RoleService {
     @Transactional
     public Role createRole(String name) {
         if (roleRepository.existsByName(name)) {
-            throw new IllegalArgumentException("Role with name " + name + " already exists");
+            throw new SimilarValuePresent("Role with name " + name + " already exists");
         }
 
         Role role = new Role();
@@ -34,7 +39,7 @@ public class RoleService {
 
     public Role getRoleByName(String name) {
         return roleRepository.findByName(name)
-                .orElseThrow(() -> new IllegalArgumentException("Role with name " + name + " not found"));
+                .orElseThrow(() -> new RoleNotFound("Role with name " + name + " not found"));
     }
 
     public List<Role> getAllRoles() {

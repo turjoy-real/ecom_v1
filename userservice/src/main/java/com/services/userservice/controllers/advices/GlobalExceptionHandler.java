@@ -12,11 +12,14 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.services.userservice.exceptions.BasicRoleUnregistered;
 import com.services.userservice.exceptions.RoleNotFound;
+import com.services.userservice.exceptions.SimilarValuePresent;
 import com.services.userservice.exceptions.UnAuthorized;
 import com.services.userservice.exceptions.UserAlreadyRegistered;
 import com.services.userservice.exceptions.UserNotFound;
 import com.services.userservice.exceptions.TokenNotFound;
 import com.services.userservice.models.ErrorResponse;
+
+import jakarta.validation.ConstraintViolationException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -55,6 +58,15 @@ public class GlobalExceptionHandler {
         error.setMessage(ex.getMessage());
         error.setStatusCode(HttpStatus.UNPROCESSABLE_ENTITY.value());
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(error);
+    }
+
+    @ExceptionHandler(SimilarValuePresent.class)
+    public ResponseEntity<ErrorResponse> handleIncorrectRole(SimilarValuePresent ex) {
+        ErrorResponse error = new ErrorResponse();
+        error.setError("InvalidRole");
+        error.setMessage(ex.getMessage());
+        error.setStatusCode(HttpStatus.CONFLICT.value());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
     @ExceptionHandler(TokenNotFound.class)
@@ -96,4 +108,15 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errors);
     }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<?> handleConstraintViolation(ConstraintViolationException ex) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(Map.of(
+                        "error", "BadRequest",
+                        "message", ex.getMessage(),
+                        "statusCode", 400));
+    }
+
 }

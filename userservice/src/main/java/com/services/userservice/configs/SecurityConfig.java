@@ -29,7 +29,7 @@ public class SecurityConfig {
                                                 .permitAll()
 
                                                 .requestMatchers("/api/roles/**",
-                                                                "/api/roles", "/api/profile/**")
+                                                                "/api/roles")
                                                 .hasRole("ADMIN") // 👈 allow all users to read products
                                                 .anyRequest().authenticated())
                                 .oauth2ResourceServer(oauth2 -> oauth2
