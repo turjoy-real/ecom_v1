@@ -4,6 +4,7 @@ import com.services.common.dtos.UserDTO;
 import com.services.userservice.services.UserManagementService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -15,9 +16,9 @@ public class UserManagementController {
         this.userManagementService = userManagementService;
     }
 
-    @GetMapping("/{userId}/verify")
-    public ResponseEntity<Boolean> verifyUser(@PathVariable Long userId) {
-        boolean exists = userManagementService.userExistsById(userId);
+    @GetMapping("/verify")
+    public ResponseEntity<Boolean> verifyUser(Authentication authentication) {
+        boolean exists = userManagementService.userExistsById(Long.parseLong(authentication.getName()));
         return ResponseEntity.ok(exists);
     }
 

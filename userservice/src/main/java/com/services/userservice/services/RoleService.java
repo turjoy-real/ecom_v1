@@ -5,8 +5,6 @@ import com.services.userservice.models.User;
 import com.services.userservice.repositories.RoleRepository;
 import com.services.userservice.repositories.UserRepo;
 
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 
 import com.services.userservice.exceptions.RoleNotFound;
 import com.services.userservice.exceptions.SimilarValuePresent;
@@ -82,10 +80,6 @@ public class RoleService {
 
             List<Role> roles = user.getRoles();
             roles.remove(role);
-
-            if (roles.isEmpty()) {
-                throw new IllegalArgumentException("User must have at least one role");
-            }
 
             user.setRoles(roles);
             userRepository.save(user);

@@ -1,6 +1,5 @@
-package com.services.productservice.dtos;
+package com.services.common.dtos;
 
-import com.services.productservice.models.Category;
 import lombok.*;
 
 @Getter

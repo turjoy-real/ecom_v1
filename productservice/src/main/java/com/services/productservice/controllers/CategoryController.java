@@ -2,9 +2,12 @@ package com.services.productservice.controllers;
 
 import com.services.productservice.models.Category;
 import com.services.productservice.repositories.CategoryRepository;
+import com.services.productservice.services.ProductService;
+import com.services.productservice.services.CategoryService;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
+
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -13,21 +16,23 @@ import java.util.List;
 @RequestMapping("/api/categories")
 public class CategoryController {
     private final CategoryRepository categoryRepo;
+    private final ProductService productService;
+    private final CategoryService categoryService;
 
-    public CategoryController(CategoryRepository categoryRepo) {
+    public CategoryController(CategoryRepository categoryRepo, ProductService productService, CategoryService categoryService) {
         this.categoryRepo = categoryRepo;
+        this.productService = productService;
+        this.categoryService = categoryService;
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<List<Category>> getAllCategories() {
-        return ResponseEntity.ok(categoryRepo.findAll());
+        return ResponseEntity.ok(categoryService.getAllCategories());
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<Category> getCategoryById(@PathVariable("id") Long id) {
-        return categoryRepo.findById(id)
+        return categoryService.getCategoryById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -35,28 +40,26 @@ public class CategoryController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Category> createCategory(@RequestBody Category category) {
-        return ResponseEntity.ok(categoryRepo.save(category));
+        return ResponseEntity.ok(categoryService.createCategory(category));
     }
 
     @PatchMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Category> updateCategory(@PathVariable("id") Long id, @RequestBody Category category) {
-        return categoryRepo.findById(id)
-                .map(existingCategory -> {
-                    existingCategory.setName(category.getName());
-                    return ResponseEntity.ok(categoryRepo.save(existingCategory));
-                })
-                .orElse(ResponseEntity.notFound().build());
+        return ResponseEntity.ok(categoryService.updateCategory(id, category));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteCategory(@PathVariable("id") Long id) {
-        return categoryRepo.findById(id)
-                .map(category -> {
-                    categoryRepo.delete(category);
-                    return ResponseEntity.noContent().<Void>build();
-                })
-                .orElse(ResponseEntity.notFound().build());
+        categoryService.deleteCategory(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}/products")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> deleteAllProductsByCategory(@PathVariable("id") Long id) {
+        productService.deleteAllProductsByCategoryId(id);
+        return ResponseEntity.noContent().build();
     }
 }

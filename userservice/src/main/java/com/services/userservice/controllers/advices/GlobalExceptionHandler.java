@@ -3,6 +3,7 @@ package com.services.userservice.controllers.advices;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -20,6 +21,7 @@ import com.services.userservice.exceptions.TokenNotFound;
 import com.services.userservice.models.ErrorResponse;
 
 import jakarta.validation.ConstraintViolationException;
+import com.services.userservice.exceptions.NotFoundException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -87,13 +89,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
         ErrorResponse error = new ErrorResponse();
-        error.setError("InternalServerError");
+        error.setError("Conflict");
         error.setMessage(ex.getMessage());
-        error.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        error.setStatusCode(HttpStatus.CONFLICT.value());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -117,6 +119,15 @@ public class GlobalExceptionHandler {
                         "error", "BadRequest",
                         "message", ex.getMessage(),
                         "statusCode", 400));
+    }
+
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNotFoundException(NotFoundException ex) {
+        ErrorResponse error = new ErrorResponse();
+        error.setError("NotFound");
+        error.setMessage(ex.getMessage());
+        error.setStatusCode(HttpStatus.NOT_FOUND.value());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
 }

@@ -4,6 +4,10 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 
+import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.RSAKey;
+import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.proc.SecurityContext;
 import com.services.oauthserver.models.User;
 import com.services.oauthserver.security.models.CustomUserDetails;
 
@@ -21,14 +25,26 @@ import org.springframework.security.oauth2.core.oidc.OidcScopes;
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
+import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
+import org.springframework.security.oauth2.server.authorization.token.DelegatingOAuth2TokenGenerator;
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
+import org.springframework.security.oauth2.server.authorization.token.JwtGenerator;
+import org.springframework.security.oauth2.server.authorization.token.OAuth2AccessTokenGenerator;
+import org.springframework.security.oauth2.server.authorization.token.OAuth2RefreshTokenGenerator;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
+import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenGenerator;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.Set;
@@ -37,6 +53,8 @@ import java.util.stream.Collectors;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
 
 @Configuration
 public class SecurityConfig {
@@ -124,15 +142,45 @@ public class SecurityConfig {
                 };
         }
 
+    
+
+
+    @Bean
+    public AuthorizationServerSettings authorizationServerSettings() {
+        return AuthorizationServerSettings.builder().build();
+    }
+
+    @Bean
+        public JWKSource<SecurityContext> jwkSource() {
+        try {
+                RSAPublicKey publicKey = (RSAPublicKey) KeyLoader.loadPublicKey("public.pem");
+                RSAPrivateKey privateKey = (RSAPrivateKey) KeyLoader.loadPrivateKey("private.pem");
+                RSAKey rsaKey = new RSAKey.Builder(publicKey)
+                .privateKey(privateKey)
+                .keyID("your-key-id") // Use a fixed key ID or compute from the key
+                .build();
+                JWKSet jwkSet = new JWKSet(rsaKey);
+                return (jwkSelector, securityContext) -> jwkSelector.select(jwkSet);
+        } catch (Exception e) {
+                throw new IllegalStateException("Failed to load RSA keys", e);
+        }
+}
+
+        @Bean
+        public JwtDecoder jwtDecoder(JWKSource<SecurityContext> jwkSource) {
+                return OAuth2AuthorizationServerConfiguration.jwtDecoder(jwkSource);
+        }
+
+     
+
         @Bean
         public CommandLineRunner registerClient(RegisteredClientRepository repository,
                         PasswordEncoder passwordEncoder) {
                 return args -> {
                         String clientId1 = "spa-client";
-                        // String clientId2 = "oidc-client";
 
                         RegisteredClient existing1 = repository.findByClientId(clientId1);
-                        // RegisteredClient existing2 = repository.findByClientId(clientId2);
+
                         if (existing1 != null) {
                                 System.out.println("✅ Client already registered: " + clientId1);
                                 return;
@@ -159,7 +207,7 @@ public class SecurityConfig {
                                                                 .requireAuthorizationConsent(true)
                                                                 .build())
                                                 .tokenSettings(TokenSettings.builder()
-                                                                .accessTokenTimeToLive(Duration.ofMinutes(60))
+                                                                .accessTokenTimeToLive(Duration.ofMinutes(1800))
                                                                 .refreshTokenTimeToLive(Duration.ofDays(30))
                                                                 .reuseRefreshTokens(false) // new refresh token each
                                                                                            // time

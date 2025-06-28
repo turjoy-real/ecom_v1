@@ -1,12 +1,16 @@
 package com.services.userservice.controllers;
 
 import com.services.common.dtos.AddressDTO;
-
+import com.services.userservice.dtos.UpdateAddressRequest;
 import com.services.userservice.repositories.UserRepo;
 import com.services.userservice.services.AddressService;
+
+import jakarta.validation.Valid;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -14,6 +18,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/addresses")
 @PreAuthorize("isAuthenticated()")
+@Validated
 public class AddressController {
     private final AddressService addressService;
 
@@ -41,19 +46,15 @@ public class AddressController {
     }
 
     @PostMapping
-    public ResponseEntity<AddressDTO> addAddress(Authentication authentication, @RequestBody AddressDTO dto) {
+    public ResponseEntity<AddressDTO> addAddress(Authentication authentication,@Valid @RequestBody AddressDTO dto) {
         Long userId = getUserId(authentication);
-        if (dto.getStreetAddress() == null || dto.getCity() == null || dto.getState() == null
-                || dto.getZipCode() == null) {
-            return ResponseEntity.badRequest().body(null);
-        }
         AddressDTO created = addressService.addAddress(userId, dto);
         return ResponseEntity.ok(created);
     }
 
     @PatchMapping("/{addressId}")
     public ResponseEntity<AddressDTO> updateAddress(Authentication authentication, @PathVariable Long addressId,
-            @RequestBody AddressDTO dto) {
+      @Valid  @RequestBody UpdateAddressRequest dto) {
         Long userId = getUserId(authentication);
         AddressDTO updated = addressService.updateAddress(userId, addressId, dto);
         return ResponseEntity.ok(updated);

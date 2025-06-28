@@ -1,11 +1,18 @@
 package com.services.userservice.services;
 
 import com.services.common.dtos.AddressDTO;
+
 import com.services.userservice.models.Address;
 import com.services.userservice.models.User;
 import com.services.userservice.repositories.AddressRepository;
 import com.services.userservice.repositories.UserRepo;
+import com.services.userservice.mappers.AddressMapper;
 import jakarta.transaction.Transactional;
+
+import com.services.userservice.dtos.UpdateAddressRequest;
+import com.services.userservice.exceptions.NotFoundException;
+import lombok.RequiredArgsConstructor;
+
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -13,14 +20,12 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class AddressService {
     private final AddressRepository addressRepository;
     private final UserRepo userRepo;
+    private final AddressMapper addressMapper;
 
-    public AddressService(AddressRepository addressRepository, UserRepo userRepo) {
-        this.addressRepository = addressRepository;
-        this.userRepo = userRepo;
-    }
 
     public List<AddressDTO> getAddressesByUserId(Long userId) {
         return addressRepository.findByUserId(userId).stream()
@@ -36,8 +41,10 @@ public class AddressService {
     @Transactional
     public AddressDTO addAddress(Long userId, AddressDTO dto) {
         Optional<User> userOpt = userRepo.findById(userId);
-        if (userOpt.isEmpty())
-            throw new RuntimeException("User not found");
+        if (userOpt.isEmpty()){
+            throw new NotFoundException("User not found");
+        }
+            
         Address address = fromDTO(dto);
         address.setUser(userOpt.get());
         if (dto.isDefault()) {
@@ -49,25 +56,12 @@ public class AddressService {
     }
 
     @Transactional
-    public AddressDTO updateAddress(Long userId, Long addressId, AddressDTO dto) {
+    public AddressDTO updateAddress(Long userId, Long addressId, UpdateAddressRequest dto) {
         Address address = addressRepository.findByIdAndUserId(addressId, userId);
         if (address == null)
-            throw new RuntimeException("Address not found");
+            throw new NotFoundException("Address not found");
 
-        if (dto.getStreetAddress() != null)
-            address.setStreetAddress(dto.getStreetAddress());
-        if (dto.getCity() != null)
-            address.setCity(dto.getCity());
-        if (dto.getState() != null)
-            address.setState(dto.getState());
-        if (dto.getCountry() != null)
-            address.setCountry(dto.getCountry());
-        if (dto.getZipCode() != null)
-            address.setZipCode(dto.getZipCode());
-        if (dto.getLabel() != null)
-            address.setLabel(dto.getLabel());
-        if (dto.getAdditionalInfo() != null)
-            address.setAdditionalInfo(dto.getAdditionalInfo());
+        addressMapper.updateAddressFromDto(dto, address);
 
         // Only update default if explicitly set
         if (dto.isDefault()) {
@@ -84,6 +78,8 @@ public class AddressService {
         Address address = addressRepository.findByIdAndUserId(addressId, userId);
         if (address != null) {
             addressRepository.delete(address);
+        } else {
+            throw new NotFoundException("Address not found");
         }
     }
 
@@ -97,7 +93,7 @@ public class AddressService {
             address.setDefault(true);
             addressRepository.save(address);
         } else {
-            throw new RuntimeException("Address not found");
+            throw new NotFoundException("Address not found");
         }
     }
 

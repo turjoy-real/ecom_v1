@@ -1,5 +1,6 @@
 package com.services.userservice.models;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.ManyToMany;
@@ -20,6 +21,8 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 public class User extends BaseModel {
 
     private String name;
+
+    @Column(unique = true, nullable = false)
     private String email;
     private String hashedPassword;
 

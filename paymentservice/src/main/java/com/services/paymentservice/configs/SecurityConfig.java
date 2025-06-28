@@ -1,9 +1,9 @@
-package com.services.productservice.configs;
+package com.services.paymentservice.configs;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
+
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
@@ -23,18 +23,6 @@ public class SecurityConfig {
         SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
                 return http
                                 .authorizeHttpRequests(auth -> auth
-                                                .requestMatchers(
-                                                                "/v3/api-docs/**",
-                                                                "/swagger-ui/**",
-                                                                "/swagger-ui.html",
-                                                                "/api/products/**"
-                                                              )
-                                                
-                                                .permitAll()
-                                                .requestMatchers(HttpMethod.GET, "/api/categories")
-                                                .permitAll()
-                                                .requestMatchers(HttpMethod.GET, "/api/categories/*")
-                                                .permitAll()
                                                 .anyRequest().authenticated())
                                 .oauth2ResourceServer(oauth2 -> oauth2
                                                 .jwt(jwt -> jwt

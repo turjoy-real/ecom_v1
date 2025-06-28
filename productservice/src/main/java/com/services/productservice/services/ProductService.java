@@ -1,8 +1,7 @@
 package com.services.productservice.services;
 
+import com.services.common.dtos.ProductResponse;
 import com.services.productservice.dtos.ProductRequest;
-import com.services.productservice.dtos.ProductResponse;
-import com.services.productservice.models.Product;
 
 import org.springframework.data.domain.Page;
 
@@ -45,4 +44,6 @@ public interface ProductService {
     void updateProduct(Long id, ProductRequest request);
 
     void deleteProduct(Long id);
+
+    void deleteAllProductsByCategoryId(Long categoryId);
 }

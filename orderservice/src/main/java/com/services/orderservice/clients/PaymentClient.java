@@ -7,7 +7,7 @@ import com.services.common.dtos.CreatePaymentLinkRequestDto;
 
 @FeignClient(name = "paymentservice")
 public interface PaymentClient {
-    @PostMapping("/api/payment/create-link")
+    @PostMapping("/api/payment")
     String generatePaymentLink(
             @RequestHeader("Authorization") String token,
             @RequestBody CreatePaymentLinkRequestDto request);

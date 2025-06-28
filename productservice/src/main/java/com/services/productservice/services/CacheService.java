@@ -4,7 +4,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import com.services.productservice.dtos.ProductResponse;
+import com.services.common.dtos.ProductResponse;
 import com.services.productservice.models.Product;
 
 @Service

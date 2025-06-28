@@ -3,22 +3,27 @@ package com.services.orderservice.controllers;
 import com.services.orderservice.dtos.*;
 import com.services.orderservice.services.OrderService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.validation.annotation.Validated;
 
 @RestController
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
+@Validated
 public class OrderController {
 
     private final OrderService orderService;
 
     @PostMapping
-    public ResponseEntity<OrderResponse> createOrder(Authentication authentication, @RequestBody OrderRequest request) {
-        return ResponseEntity.ok(orderService.createOrderFromCart(authentication, request.getShippingAddressId()));
+    public ResponseEntity<OrderResponse> createOrder(@AuthenticationPrincipal Jwt jwt,@Valid @RequestBody OrderRequest request) {
+        return ResponseEntity.ok(orderService.createOrderFromCart(jwt, request.getShippingAddressId()));
     }
 
     @PostMapping("/status/update")

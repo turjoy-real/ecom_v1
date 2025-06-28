@@ -1,6 +1,7 @@
 package com.services.orderservice.clients;
 
 import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.services.common.dtos.CartResponse;
@@ -9,7 +10,7 @@ import com.services.common.dtos.CartResponse;
 public interface CartClient {
 
     @GetMapping("/api/cart")
-    CartResponse getCart(@RequestHeader("Authorization") String token);
+    ResponseEntity<CartResponse> getCart(@RequestHeader("Authorization") String token);
 
     @DeleteMapping("/api/cart")
     void clearCart(@RequestHeader("Authorization") String token);

@@ -2,10 +2,10 @@ package com.services.productservice.services;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.services.common.dtos.ProductResponse;
 import com.services.productservice.dtos.ProductRequest;
-import com.services.productservice.dtos.ProductResponse;
-import com.services.productservice.exceptions.IncompleteProductInfo;
 import com.services.productservice.exceptions.ProductNotFoundException;
+import com.services.productservice.exceptions.NotFoundException;
 import com.services.productservice.models.Category;
 import com.services.productservice.models.CategoryDocument;
 import com.services.productservice.models.Product;
@@ -152,7 +152,7 @@ public class ProductServiceImpl implements ProductService {
     public void updateProduct(Long id, ProductRequest request) {
         Category category = categoryRepository.findByName(request.getCategory()).orElseGet(() -> {
             Category category1 = new Category();
-            category1.setName(request.getName());
+            category1.setName(request.getCategory());
             return categoryRepository.save(category1);
         });
         Product product = productRepository.findById(id)
@@ -166,7 +166,24 @@ public class ProductServiceImpl implements ProductService {
         product.setStockQuantity(request.getStockQuantity());
         product.setImageUrl(request.getImageUrl());
 
-        productRepository.save(product);
+        Product savedProduct = productRepository.save(product);
+
+        // Retrieve the ProductDocument from Elasticsearch if it exists
+        ProductDocument productDocument = productElasticsearchRepository.findById(savedProduct.getId().toString())
+                .orElse(ProductDocument.builder().id(savedProduct.getId().toString()).build());
+
+        productDocument.setName(savedProduct.getName());
+        productDocument.setDescription(savedProduct.getDescription());
+        productDocument.setPrice(savedProduct.getPrice());
+        productDocument.setCategory(CategoryDocument.builder()
+                .id(category.getId())
+                .name(category.getName())
+                .build());
+        productDocument.setBrand(savedProduct.getBrand());
+        productDocument.setStockQuantity(savedProduct.getStockQuantity());
+        productDocument.setImageUrl(savedProduct.getImageUrl());
+
+        productElasticsearchRepository.save(productDocument);
     }
 
     @Override
@@ -278,5 +295,16 @@ public class ProductServiceImpl implements ProductService {
         Pageable pageable = PageRequest.of(pageNumber, pageSize);
         return productElasticsearchRepository.searchByText(text, pageable)
                 .map(this::mapToResponseFromDocument);
+    }
+
+    @Override
+    public void deleteAllProductsByCategoryId(Long categoryId) {
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new NotFoundException("Category not found"));
+        List<Product> products = productRepository.findByCategory(category, Pageable.unpaged()).getContent();
+        for (Product product : products) {
+            productRepository.deleteById(product.getId());
+            productElasticsearchRepository.deleteById(product.getId().toString());
+        }
     }
 }

@@ -11,10 +11,11 @@ public class UserMapper {
         List<String> roleNames = user.getRoles().stream()
                 .map(Role::getName)
                 .toList();
-        return new UserDTO(
-                user.getEmail(),
-                user.getName(),
-                user.isEmailVerified(),
-                roleNames);
+
+        UserDTO userDTO = new UserDTO();
+        userDTO.setEmail(user.getEmail());
+        userDTO.setEmailVerified(user.isEmailVerified());
+        userDTO.setRoles(roleNames);
+        return userDTO;
     }
 }

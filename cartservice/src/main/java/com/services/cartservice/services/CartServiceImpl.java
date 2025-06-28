@@ -31,16 +31,10 @@ public class CartServiceImpl implements CartService {
         this.userServiceClient = userServiceClient;
     }
 
-    private void validateUser(String userId) {
-        if (!userServiceClient.verifyUser(userId)) {
-            throw new UserNotFoundException(userId);
-        }
-    }
 
     @Override
     @Cacheable(value = "cart", key = "#userId")
     public CartResponse getCart(String userId) {
-        validateUser(userId);
         List<CartItem> cartItems = cartRepository.findByUserId(userId);
         return buildCartResponse(userId, cartItems);
     }
@@ -48,7 +42,6 @@ public class CartServiceImpl implements CartService {
     @Override
     @Transactional
     public CartResponse addItemToCart(String userId, CartItemDTO cartItemDTO) {
-        validateUser(userId);
 
         // Verify stock before adding to cart
         if (!productServiceClient.verifyStock(cartItemDTO.getProductId(), cartItemDTO.getQuantity())) {
@@ -81,7 +74,6 @@ public class CartServiceImpl implements CartService {
     @Transactional
     @CacheEvict(value = "cart", key = "#userId")
     public void removeItemFromCart(String userId, String productId) {
-        validateUser(userId);
         cartRepository.deleteByUserIdAndProductId(userId, productId);
     }
 
@@ -89,7 +81,6 @@ public class CartServiceImpl implements CartService {
     @Transactional
     @CacheEvict(value = "cart", key = "#userId")
     public void clearCart(String userId) {
-        validateUser(userId);
         cartRepository.deleteByUserId(userId);
     }
 
@@ -97,7 +88,6 @@ public class CartServiceImpl implements CartService {
     @Transactional
     @CachePut(value = "cart", key = "#userId")
     public CartResponse decrementItemQuantity(String userId, String productId) {
-        validateUser(userId);
 
         CartItem existingItem = cartRepository.findByUserIdAndProductId(userId, productId);
 

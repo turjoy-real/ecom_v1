@@ -4,16 +4,19 @@ import com.services.cartservice.services.CartService;
 import com.services.common.dtos.CartItemDTO;
 import com.services.common.dtos.CartResponse;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.validation.annotation.Validated;
 
 @RestController
 @RequestMapping("/api/cart")
 @RequiredArgsConstructor
+@Validated
 public class CartController {
     private final CartService cartService;
 
@@ -28,7 +31,7 @@ public class CartController {
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<CartResponse> addItemToCart(
             Authentication authentication,
-            @RequestBody CartItemDTO cartItemDTO) {
+          @Valid  @RequestBody CartItemDTO cartItemDTO) {
         String userId = authentication.getName();
 
         System.out.println("Authenticated User: " + userId);

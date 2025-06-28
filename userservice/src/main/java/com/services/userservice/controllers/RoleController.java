@@ -51,7 +51,7 @@ public class RoleController {
 
     @DeleteMapping("/{name}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> deleteRole(@PathVariable String name) {
+    public ResponseEntity<Void> deleteRole(@NotBlank @PathVariable String name) {
         roleService.deleteRole(name);
         return ResponseEntity.noContent().build();
     }
@@ -63,7 +63,7 @@ public class RoleController {
         return ResponseEntity.ok().build();
     }
 
-    @PostMapping("/user/remove")
+    @PatchMapping("/user/remove")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> removeRoleFromUser(@Valid @RequestBody UserRoleRequest request) {
         roleService.removeRoleFromUser(request.getUserEmail(), request.getRoleName());
