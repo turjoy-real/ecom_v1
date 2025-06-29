@@ -1,5 +1,6 @@
 // Elements
 const loginButton = document.getElementById("login-button");
+const googleLoginButton = document.getElementById("google-login-button");
 const callResourceButton = document.getElementById("call-resource-button");
 const logoutButton = document.getElementById("logoutButton");
 const resultDiv = document.getElementById("result");
@@ -43,7 +44,7 @@ function generateRandomState() {
     .join("");
 }
 
-// Build auth URL
+// Build auth URL for PKCE flow
 async function initiateAuthFlow() {
   const codeVerifier = await generateCodeVerifier();
   const codeChallenge = await generateCodeChallenge(codeVerifier);
@@ -64,6 +65,13 @@ async function initiateAuthFlow() {
   console.log("🔍 Authorization URL:", authUrl);
 
   window.location.href = authUrl;
+}
+
+// Google OAuth2 login
+function initiateGoogleLogin() {
+  const googleAuthUrl = "http://localhost:9001/oauth2/authorization/google";
+  console.log("🔍 Google Authorization URL:", googleAuthUrl);
+  window.location.href = googleAuthUrl;
 }
 
 // Exchange code for token
@@ -125,6 +133,17 @@ async function handleAuthorizationResponse() {
   }
 }
 
+// Handle OAuth2 login success (for both PKCE and Google)
+function handleOAuth2Success() {
+  // Check if we have an access token from the server
+  // This will be handled by the server-side OAuth2 flow
+  resultDiv.innerText = "OAuth2 login successful! Checking for access token...";
+  
+  // Try to get the token from the server session or redirect
+  // For now, we'll just show success and let the user call the resource server
+  updateUI();
+}
+
 // Refresh token
 async function refreshAccessToken() {
   const refreshToken = localStorage.getItem("refresh_token");
@@ -180,10 +199,12 @@ function resetIdleTimer() {
 function updateUI() {
   if (accessToken) {
     loginButton.disabled = true;
+    googleLoginButton.disabled = true;
     callResourceButton.disabled = false;
     logoutButton.disabled = false; // Enable logout button when logged in
   } else {
     loginButton.disabled = false;
+    googleLoginButton.disabled = false;
     callResourceButton.disabled = true;
     logoutButton.disabled = true; // Disable logout button when logged out
   }
@@ -253,6 +274,7 @@ callResourceButton.addEventListener("click", async () => {
 
 // Events
 loginButton.addEventListener("click", initiateAuthFlow);
+googleLoginButton.addEventListener("click", initiateGoogleLogin);
 logoutButton.addEventListener("click", logout);
 
 // Monitor user activity
@@ -265,6 +287,27 @@ window.addEventListener("load", async () => {
 
   if (params.has("code")) {
     await handleAuthorizationResponse(); // 🎯 Handles redirect back from auth server
+  } else if (params.has("token") && params.has("login") && params.get("login") === "success") {
+    // Handle OAuth2 success with JWT token
+    const token = params.get("token");
+    accessToken = token;
+    localStorage.setItem("access_token", token);
+    
+    resultDiv.innerText = "OAuth2 login successful! JWT token received.";
+    updateUI();
+    startRefreshTimer();
+    resetIdleTimer();
+    
+    // Clean up URL
+    history.replaceState({}, document.title, window.location.pathname);
+  } else if (params.has("error") || params.has("oauth2_error")) {
+    // Handle OAuth2 errors
+    const error = params.get("error") || params.get("oauth2_error");
+    const errorDescription = params.get("error_description");
+    resultDiv.innerText = `OAuth2 Error: ${error} - ${errorDescription || ''}`;
+    
+    // Clean up URL
+    history.replaceState({}, document.title, window.location.pathname);
   } else {
     accessToken = localStorage.getItem("access_token");
     if (accessToken) {

@@ -10,6 +10,7 @@ import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.services.oauthserver.models.User;
 import com.services.oauthserver.security.models.CustomUserDetails;
+import com.services.oauthserver.services.SocialLoginService;
 
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
@@ -85,7 +86,7 @@ public class SecurityConfig {
 
         @Bean
         @Order(2)
-        public SecurityFilterChain clientAppSecurityFilterChain(HttpSecurity http)
+        public SecurityFilterChain clientAppSecurityFilterChain(HttpSecurity http, SocialLoginService socialLoginService)
                         throws Exception {
                 return http
                                 .csrf(csrf -> csrf.disable())
@@ -96,7 +97,10 @@ public class SecurityConfig {
                                                                 "/login", "/login/**", "/api/users/open/**",
                                                                 "/api/users/signup", "/html/**",
                                                                 "/api/users/logout",
-                                                                "/actuator/**")
+                                                                "/actuator/**",
+                                                                "/oauth2/authorization/**", // Allow OAuth2 authorization endpoints
+                                                                "/oauth2/success", // Allow OAuth2 success endpoint
+                                                                "/oauth2/failure") // Allow OAuth2 failure endpoint
 
                                                 .permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/roles/**").hasRole("ADMIN") // allow
@@ -104,6 +108,17 @@ public class SecurityConfig {
                                                                                                                    // API
                                                 .anyRequest().authenticated())
                                 .formLogin(withDefaults())
+                                .oauth2Login(oauth2 -> oauth2
+                                                .userInfoEndpoint(userInfo -> userInfo
+                                                                .userService(socialLoginService))
+                                                .successHandler((request, response, authentication) -> {
+                                                        // Redirect to our custom success endpoint
+                                                        response.sendRedirect("/oauth2/success");
+                                                })
+                                                .failureHandler((request, response, exception) -> {
+                                                        // Redirect to our custom failure endpoint
+                                                        response.sendRedirect("/oauth2/failure?error=" + exception.getMessage());
+                                                }))
                                 .logout(logout -> logout
                                                 .logoutUrl("/api/users/logout") // Ensure this matches your logout
                                                                                 // endpoint
