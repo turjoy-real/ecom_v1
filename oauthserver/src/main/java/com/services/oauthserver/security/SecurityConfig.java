@@ -193,47 +193,53 @@ public class SecurityConfig {
                         PasswordEncoder passwordEncoder) {
                 return args -> {
                         String clientId1 = "spa-client";
-
                         RegisteredClient existing1 = repository.findByClientId(clientId1);
-
                         if (existing1 != null) {
                                 System.out.println("✅ Client already registered: " + clientId1);
-                                return;
-                        }
-
-                        if (existing1 == null) {
-
+                        } else {
                                 RegisteredClient registeredClient1 = RegisteredClient
                                                 .withId(UUID.randomUUID().toString())
                                                 .clientId("spa-client")
-                                                .redirectUri("http://localhost:9001/") // hosted inside the auth server
+                                                .redirectUri("http://localhost:9001/")
                                                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                                                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN) // ✅ must
-                                                                                                              // allow
-                                                                                                              // this
+                                                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                                                 .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
                                                 .scope(OidcScopes.OPENID)
                                                 .scope(OidcScopes.PROFILE)
                                                 .scope("read")
                                                 .scope("write")
-                                                .scope("offline_access") // ✅ for refresh token
-                                                .clientSettings(ClientSettings.builder()
-                                                                .requireProofKey(true) // PKCE
-                                                                .requireAuthorizationConsent(true)
-                                                                .build())
+                                                .scope("offline_access")
+                                                .clientSettings(ClientSettings.builder().requireProofKey(true).requireAuthorizationConsent(true).build())
                                                 .tokenSettings(TokenSettings.builder()
                                                                 .accessTokenTimeToLive(Duration.ofMinutes(1800))
                                                                 .refreshTokenTimeToLive(Duration.ofDays(30))
-                                                                .reuseRefreshTokens(false) // new refresh token each
-                                                                                           // time
-                                                                .idTokenSignatureAlgorithm(SignatureAlgorithm.RS256)
+                                                                .reuseRefreshTokens(false)
                                                                 .build())
                                                 .build();
-
                                 repository.save(registeredClient1);
                         }
 
-                        System.out.println("✅ OAuth2 client registered: " + clientId1);
+                        // Register paymentservice client for interservice JWT auth
+                        String paymentClientId = "paymentservice";
+                        String paymentClientSecret = passwordEncoder.encode("change-this-to-a-strong-secret");
+                        RegisteredClient existingPayment = repository.findByClientId(paymentClientId);
+                        if (existingPayment == null) {
+                                RegisteredClient paymentClient = RegisteredClient
+                                        .withId(UUID.randomUUID().toString())
+                                        .clientId(paymentClientId)
+                                        .clientSecret(paymentClientSecret)
+                                        .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                                        .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+                                        .scope("internal.webhook")
+                                        .tokenSettings(TokenSettings.builder()
+                                                .accessTokenTimeToLive(Duration.ofMinutes(60))
+                                                .build())
+                                        .build();
+                                repository.save(paymentClient);
+                                System.out.println("✅ OAuth2 client registered: " + paymentClientId);
+                        } else {
+                                System.out.println("✅ Client already registered: " + paymentClientId);
+                        }
                 };
         }
 
