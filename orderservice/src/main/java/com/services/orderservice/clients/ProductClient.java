@@ -9,4 +9,10 @@ public interface ProductClient {
     @GetMapping("/api/products/{id}/verify-stock")
     Boolean verifyStock(@PathVariable("id") Long productId, @RequestParam("quantity") int quantity);
 
+    @PostMapping("/api/products/{id}/reduce-stock")
+    void reduceStock(@PathVariable("id") Long productId, @RequestParam("quantity") int quantity);
+
+    @PostMapping("/api/products/{id}/replenish-stock")
+    void replenishStock(@PathVariable("id") Long productId, @RequestParam("quantity") int quantity);
+
 }

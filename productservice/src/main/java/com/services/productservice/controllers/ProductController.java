@@ -137,4 +137,16 @@ public class ProductController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/{id}/reduce-stock")
+    public ResponseEntity<Void> reduceStock(@PathVariable Long id, @RequestParam int quantity) {
+        productService.reduceStock(id, quantity);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/replenish-stock")
+    public ResponseEntity<Void> replenishStock(@PathVariable Long id, @RequestParam int quantity) {
+        productService.replenishStock(id, quantity);
+        return ResponseEntity.ok().build();
+    }
+
 }

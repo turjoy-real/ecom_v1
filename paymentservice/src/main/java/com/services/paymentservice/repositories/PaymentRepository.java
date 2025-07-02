@@ -1,7 +1,8 @@
 package com.services.paymentservice.repositories;
 
+import com.services.common.enums.PaymentStatus;
 import com.services.paymentservice.models.Payment;
-import com.services.paymentservice.models.PaymentStatus;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 import java.util.Optional;

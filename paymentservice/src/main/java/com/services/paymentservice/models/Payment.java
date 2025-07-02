@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+import com.services.common.enums.PaymentStatus;
+
 @Data
 @Entity
 @Table(name = "payments")

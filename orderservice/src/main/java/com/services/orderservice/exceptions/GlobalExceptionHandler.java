@@ -68,4 +68,18 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.internalServerError().body(errorDetails);
     }
+
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<Map<String, Object>> handleBadRequestException(
+            BadRequestException ex, WebRequest request) {
+
+        Map<String, Object> errorDetails = new HashMap<>();
+        errorDetails.put("timestamp", LocalDateTime.now());
+        errorDetails.put("message", ex.getMessage());
+        errorDetails.put("status", HttpStatus.BAD_REQUEST.value());
+        errorDetails.put("error", "Bad Request");
+        errorDetails.put("path", request.getDescription(false));
+
+        return ResponseEntity.badRequest().body(errorDetails);
+    }
 }

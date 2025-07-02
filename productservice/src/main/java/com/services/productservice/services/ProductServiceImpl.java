@@ -6,6 +6,7 @@ import com.services.common.dtos.ProductResponse;
 import com.services.productservice.dtos.ProductRequest;
 import com.services.productservice.exceptions.ProductNotFoundException;
 import com.services.productservice.exceptions.NotFoundException;
+import com.services.productservice.exceptions.InsufficientStockException;
 import com.services.productservice.models.Category;
 import com.services.productservice.models.CategoryDocument;
 import com.services.productservice.models.Product;
@@ -207,6 +208,29 @@ public class ProductServiceImpl implements ProductService {
                 .orElseThrow(() -> new ProductNotFoundException("Product not found with ID: " + id));
 
         return product.getStockQuantity() >= quantity;
+    }
+
+    @Override
+    @Transactional
+    public void reduceStock(Long id, int quantity) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ProductNotFoundException("Product not found"));
+        if (product.getStockQuantity() < quantity) {
+            throw new InsufficientStockException(id, quantity, product.getStockQuantity());
+        }
+        product.setStockQuantity(product.getStockQuantity() - quantity);
+        productRepository.save(product);
+        // Optionally update Elasticsearch and cache here
+    }
+
+    @Override
+    @Transactional
+    public void replenishStock(Long id, int quantity) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ProductNotFoundException("Product not found"));
+        product.setStockQuantity(product.getStockQuantity() + quantity);
+        productRepository.save(product);
+        // Optionally update Elasticsearch and cache here
     }
 
     private ProductResponse mapToResponse(Product product) {

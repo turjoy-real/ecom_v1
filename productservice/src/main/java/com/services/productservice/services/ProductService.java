@@ -46,4 +46,7 @@ public interface ProductService {
     void deleteProduct(Long id);
 
     void deleteAllProductsByCategoryId(Long categoryId);
+
+    void reduceStock(Long id, int quantity);
+    void replenishStock(Long id, int quantity);
 }

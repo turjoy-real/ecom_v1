@@ -8,6 +8,8 @@ import java.util.List;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 
+import com.services.common.enums.PaymentStatus;
+
 @Data
 @Entity
 @Table(name = "orders")
@@ -28,9 +30,6 @@ public class Order {
 
     @Enumerated(EnumType.STRING)
     private PaymentStatus paymentStatus;
-
-
-    private LocalDateTime orderDate;
 
     @CreatedDate
     @Column(updatable = false)

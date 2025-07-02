@@ -1,7 +1,8 @@
 package com.services.orderservice.dtos;
 
+import com.services.common.enums.PaymentStatus;
 import com.services.orderservice.models.OrderStatus;
-import com.services.orderservice.models.PaymentStatus;
+
 import lombok.Data;
 import java.time.LocalDateTime;
 import java.util.List;
