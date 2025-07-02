@@ -167,7 +167,7 @@ public class OrderServiceImpl implements OrderService {
             for (CartItemDTO item : products) {
                 Long productId = Long.parseLong(item.getProductId());
                 int requestedQty = item.getQuantity();
-                productClient.reduceStock(productId, requestedQty);
+                productClient.reduceStock(productId, requestedQty, token);
             }
             stockReduced = true;
 
@@ -205,7 +205,7 @@ public class OrderServiceImpl implements OrderService {
             tracking.setLastUpdated(java.time.LocalDateTime.now());
             orderTrackingRepository.save(tracking);
             // 4. Clear cart
-            clearCartAsync(token);
+            // clearCartAsync(token);
             // 5. Get payment link
 
     
@@ -285,7 +285,7 @@ public class OrderServiceImpl implements OrderService {
                     Long productId = Long.parseLong(item.getProductId());
                     int requestedQty = item.getQuantity();
                     try {
-                        productClient.replenishStock(productId, requestedQty);
+                        productClient.replenishStock(productId, requestedQty, token);
                     } catch (Exception replenishEx) {
                         log.error("Failed to replenish stock for product {} after order failure: {}", productId, replenishEx.getMessage(), replenishEx);
                     }

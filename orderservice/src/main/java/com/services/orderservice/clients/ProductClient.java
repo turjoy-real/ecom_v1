@@ -10,9 +10,9 @@ public interface ProductClient {
     Boolean verifyStock(@PathVariable("id") Long productId, @RequestParam("quantity") int quantity);
 
     @PostMapping("/api/products/{id}/reduce-stock")
-    void reduceStock(@PathVariable("id") Long productId, @RequestParam("quantity") int quantity);
+    void reduceStock(@PathVariable("id") Long productId, @RequestParam("quantity") int quantity, @RequestHeader("Authorization") String token);
 
     @PostMapping("/api/products/{id}/replenish-stock")
-    void replenishStock(@PathVariable("id") Long productId, @RequestParam("quantity") int quantity);
+    void replenishStock(@PathVariable("id") Long productId, @RequestParam("quantity") int quantity, @RequestHeader("Authorization") String token);
 
 }
