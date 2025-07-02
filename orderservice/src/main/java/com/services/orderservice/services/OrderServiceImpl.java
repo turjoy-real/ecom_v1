@@ -259,7 +259,7 @@ public class OrderServiceImpl implements OrderService {
             orderResponse.setTotalAmount(savedOrder.getTotalAmount());
             orderResponse.setStatus(savedOrder.getStatus());
             orderResponse.setPaymentStatus(savedOrder.getPaymentStatus());
-            orderResponse.setOrderDate(savedOrder.getCreatedAt());
+            orderResponse.setUpdatedAt(savedOrder.getUpdatedAt());
             orderResponse.setCreatedAt(savedOrder.getCreatedAt());
             orderResponse.setShippingAddressId(savedOrder.getAddressId());
             orderResponse.setPaymentMethod(savedOrder.getPaymentMethod());
@@ -388,7 +388,7 @@ public class OrderServiceImpl implements OrderService {
         dto.setTotalAmount(order.getTotalAmount());
         dto.setStatus(order.getStatus());
         dto.setPaymentStatus(order.getPaymentStatus());
-        dto.setOrderDate(order.getCreatedAt());
+        dto.setUpdatedAt(order.getUpdatedAt());
         dto.setCreatedAt(order.getCreatedAt());
         dto.setShippingAddressId(order.getAddressId());
         dto.setPaymentMethod(order.getPaymentMethod());
