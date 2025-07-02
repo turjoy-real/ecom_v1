@@ -1,5 +1,6 @@
 package com.services.orderservice.controllers;
 
+import com.services.common.enums.PaymentStatus;
 import com.services.orderservice.dtos.*;
 import com.services.orderservice.services.OrderService;
 
@@ -39,7 +40,7 @@ public class OrderController {
     }
 
     @PostMapping("/payment-status/update")
-    public ResponseEntity<?> updatePaymentStatus(@RequestParam Long orderId, @RequestParam String paymentStatus) {
+    public ResponseEntity<?> updatePaymentStatus(@RequestParam Long orderId, @RequestParam PaymentStatus paymentStatus) {
         boolean success = orderService.updatePaymentStatus(orderId, paymentStatus);
         if (success) {
             return ResponseEntity.ok("Payment status updated");
@@ -53,6 +54,13 @@ public class OrderController {
         String userId = jwt.getSubject();
         List<OrderResponse> orders = orderService.getOrdersByUserId(userId);
         return ResponseEntity.ok(orders);
+    }
+
+    @GetMapping("/{orderId}")
+    public ResponseEntity<OrderResponse> getOrderStatus(@PathVariable Long orderId, @AuthenticationPrincipal Jwt jwt) {
+        String userId = jwt.getSubject();
+        OrderResponse order = orderService.getOrderByIdForUser(orderId, userId);
+        return ResponseEntity.ok(order);
     }
 
 }

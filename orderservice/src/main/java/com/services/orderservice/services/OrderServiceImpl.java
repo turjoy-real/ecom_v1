@@ -338,27 +338,18 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public boolean updatePaymentStatus(Long orderId, String paymentStatus) {
+    public boolean updatePaymentStatus(Long orderId, PaymentStatus paymentStatus) {
         if (orderId == null) {
             throw new BadRequestException("Order ID is required");
         }
         
-        if (paymentStatus == null || paymentStatus.trim().isEmpty()) {
-            throw new BadRequestException("Payment status is required");
-        }
 
         Order order = orderRepository.findById(orderId).orElse(null);
         if (order == null) {
             throw new OrderNotFoundException(orderId);
         }
         
-        try {
-            PaymentStatus.valueOf(paymentStatus);
-        } catch (IllegalArgumentException e) {
-            throw new InvalidPaymentStatusException(paymentStatus);
-        }
-        
-        order.setPaymentStatus(PaymentStatus.valueOf(paymentStatus));
+        order.setPaymentStatus(paymentStatus);
         
         try {
             orderRepository.save(order);
@@ -378,6 +369,16 @@ public class OrderServiceImpl implements OrderService {
             responses.add(mapToOrderResponse(order));
         }
         return responses;
+    }
+
+    @Override
+    public OrderResponse getOrderByIdForUser(Long orderId, String userId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException(orderId));
+        if (!order.getUserId().equals(userId)) {
+            throw new RuntimeException("Unauthorized to view this order");
+        }
+        return mapToOrderResponse(order);
     }
 
     private com.services.orderservice.dtos.OrderResponse mapToOrderResponse(Order order) {
