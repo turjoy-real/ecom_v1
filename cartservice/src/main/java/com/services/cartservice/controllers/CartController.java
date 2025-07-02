@@ -31,9 +31,8 @@ public class CartController {
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<CartResponse> addItemToCart(
             Authentication authentication,
-          @Valid  @RequestBody CartItemDTO cartItemDTO) {
+          @Valid @RequestBody CartItemDTO cartItemDTO) {
         String userId = authentication.getName();
-
         System.out.println("Authenticated User: " + userId);
         return ResponseEntity.ok(cartService.addItemToCart(userId, cartItemDTO));
     }

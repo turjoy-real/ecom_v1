@@ -1,7 +1,7 @@
 package com.services.cartservice.services;
 
+import com.services.cartservice.clients.ProductClient;
 import com.services.cartservice.exceptions.InsufficientStockException;
-import com.services.cartservice.exceptions.UserNotFoundException;
 import com.services.cartservice.models.CartItem;
 import com.services.cartservice.repositories.CartRepo;
 import com.services.common.dtos.CartItemDTO;
@@ -16,20 +16,15 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import lombok.RequiredArgsConstructor;
+
 @Service
+@RequiredArgsConstructor
 public class CartServiceImpl implements CartService {
 
     private final CartRepo cartRepository;
-    private final ProductServiceClient productServiceClient;
-    private final UserServiceClient userServiceClient;
+    private final ProductClient productClient;
 
-    public CartServiceImpl(CartRepo cartRepository,
-            ProductServiceClient productServiceClient,
-            UserServiceClient userServiceClient) {
-        this.cartRepository = cartRepository;
-        this.productServiceClient = productServiceClient;
-        this.userServiceClient = userServiceClient;
-    }
 
 
     @Override
@@ -44,7 +39,7 @@ public class CartServiceImpl implements CartService {
     public CartResponse addItemToCart(String userId, CartItemDTO cartItemDTO) {
 
         // Verify stock before adding to cart
-        if (!productServiceClient.verifyStock(cartItemDTO.getProductId(), cartItemDTO.getQuantity())) {
+        if (!productClient.verifyStock(cartItemDTO.getProductId(), cartItemDTO.getQuantity()).getBody()) {
             throw new InsufficientStockException("Insufficient stock for product: " + cartItemDTO.getProductId());
         }
 
@@ -52,7 +47,7 @@ public class CartServiceImpl implements CartService {
 
         if (existingItem != null) {
             int newQuantity = existingItem.getQuantity() + cartItemDTO.getQuantity();
-            if (!productServiceClient.verifyStock(cartItemDTO.getProductId(), newQuantity)) {
+            if (!productClient.verifyStock(cartItemDTO.getProductId(), newQuantity).getBody()) {
                 throw new InsufficientStockException("Insufficient stock for product: " + cartItemDTO.getProductId());
             }
             existingItem.setQuantity(newQuantity);
