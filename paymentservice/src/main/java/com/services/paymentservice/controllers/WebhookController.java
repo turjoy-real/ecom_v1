@@ -9,6 +9,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.services.common.enums.PaymentStatus;
+import com.services.paymentservice.clients.OrderServiceFeignClient;
+import com.services.paymentservice.services.OAuthClientCredentialsService;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @RestController
 @RequestMapping("/api/razorpay/webhook")
@@ -17,6 +21,11 @@ public class WebhookController {
 
     @Value("${razorpay.webhook.secret}")
     private String webhookSecret;
+
+    @Autowired
+    private OrderServiceFeignClient orderServiceFeignClient;
+    @Autowired
+    private OAuthClientCredentialsService oAuthClientCredentialsService;
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> handleWebhook(
@@ -64,11 +73,29 @@ public class WebhookController {
                 log.info("✅ Payment captured: id={}, amount={}",
                         payloadEntity.path("id").asText(),
                         payloadEntity.path("amount").asInt());
+                // Call orderservice to update payment status
+                try {
+                    String orderId = payloadEntity.path("reference_id").asText();
+                    String token = oAuthClientCredentialsService.getToken();
+                    orderServiceFeignClient.updatePaymentStatus(token, Long.valueOf(orderId), PaymentStatus.COMPLETED);
+                    log.info("OrderService payment status updated for orderId={}", orderId);
+                } catch (Exception ex) {
+                    log.error("Failed to update payment status in orderservice", ex);
+                }
                 break;
             case "payment_link.failed":
                 log.warn("❌ Payment failed: id={}, error={}",
                         payloadEntity.path("id").asText(),
                         payloadEntity.path("error_code").asText("UNKNOWN"));
+                // Optionally update order as failed
+                try {
+                    String orderId = payloadEntity.path("reference_id").asText();
+                    String token = oAuthClientCredentialsService.getToken();
+                    orderServiceFeignClient.updatePaymentStatus(token, Long.valueOf(orderId), PaymentStatus.FAILED);
+                    log.info("OrderService payment status updated for orderId={}", orderId);
+                } catch (Exception ex) {
+                    log.error("Failed to update payment status in orderservice", ex);
+                }
                 break;
             case "payment_link.paid":
                 log.info("🔗 Payment syccessful: id={}, short_url={}",
