@@ -25,7 +25,7 @@ import com.services.orderservice.dtos.OrderResponse.OrderItemResponse;
 import com.services.orderservice.exceptions.BadRequestException;
 import com.services.orderservice.exceptions.CartServiceException;
 import com.services.orderservice.exceptions.InvalidOrderStatusException;
-import com.services.orderservice.exceptions.InvalidPaymentStatusException;
+
 import com.services.orderservice.exceptions.OrderNotFoundException;
 import com.services.orderservice.exceptions.PaymentServiceException;
 import com.services.orderservice.exceptions.ProductNotAvailableException;
@@ -34,9 +34,7 @@ import com.services.orderservice.models.Order;
 import com.services.orderservice.models.OrderItem;
 import com.services.orderservice.models.OrderStatus;
 
-import com.services.orderservice.models.OrderTracking;
 import com.services.orderservice.repositories.OrderRepository;
-import com.services.orderservice.repositories.OrderTrackingRepository;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -52,7 +50,6 @@ public class OrderServiceImpl implements OrderService {
     private final PaymentClient paymentClient;
     private final UserClient userClient;
     private final OrderStatusUpdateProducer orderStatusUpdateProducer;
-    private final OrderTrackingRepository orderTrackingRepository;
 
     private static final Logger log = LoggerFactory.getLogger(OrderServiceImpl.class);
 
@@ -198,12 +195,7 @@ public class OrderServiceImpl implements OrderService {
                 log.error("Failed to save order for user: {}", uid, e);
                 throw new RuntimeException("Failed to save order", e);
             }
-            // Create initial order tracking entry
-            OrderTracking tracking = new OrderTracking();
-            tracking.setOrder(savedOrder);
-            tracking.setCurrentStatus("CREATED");
-            tracking.setLastUpdated(java.time.LocalDateTime.now());
-            orderTrackingRepository.save(tracking);
+
             // 4. Clear cart
             // clearCartAsync(token);
             // 5. Get payment link

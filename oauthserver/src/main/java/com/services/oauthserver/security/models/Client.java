@@ -5,13 +5,15 @@ import java.time.Instant;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "`client`")
+@Table(name = "`client`",indexes = @Index(name = "idx_client_clientid", columnList = "clientId"))
 public class Client {
     @Id
     private String id;
+    @Column(unique = true)
     private String clientId;
     private Instant clientIdIssuedAt;
     private String clientSecret;
