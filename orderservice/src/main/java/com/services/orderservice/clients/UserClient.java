@@ -11,10 +11,7 @@ public interface UserClient {
 
     @GetMapping("/api/profile")
     ResponseEntity<UserDTO> getMyProfile(@RequestHeader("Authorization") String token);
-    
-    @GetMapping("/api/profile/user/{userId}")
-    ResponseEntity<UserDTO> getUserProfileById(@PathVariable String userId);
-    
+
     @GetMapping("/actuator/health")
     ResponseEntity<String> health();
 }

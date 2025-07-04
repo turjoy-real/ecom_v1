@@ -1,9 +1,8 @@
-package com.services.orderservice.models;
+package com.services.common.enums;
 
 public enum OrderStatus {
     CREATED,
-    PAYMENT_PENDING,
-    PAYMENT_VERIFIED,
+    PLACED,
     PROCESSING,
     SHIPPED,
     DELIVERED,

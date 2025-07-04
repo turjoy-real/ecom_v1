@@ -9,6 +9,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import com.services.common.enums.OrderStatus;
 import com.services.common.enums.PaymentStatus;
 
 @Data
@@ -28,15 +29,16 @@ public class Order {
     private double totalAmount;
 
     @Enumerated(EnumType.STRING)
+    @Column(length = 20)
     private OrderStatus status;
 
     @Enumerated(EnumType.STRING)
+    @Column(length = 20)
     private PaymentStatus paymentStatus;
 
     @CreatedDate
     @Column(updatable = false)
     private LocalDateTime createdAt;
-
 
     @LastModifiedDate
     private LocalDateTime updatedAt;

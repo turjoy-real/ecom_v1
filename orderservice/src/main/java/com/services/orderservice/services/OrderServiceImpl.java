@@ -14,14 +14,16 @@ import org.springframework.stereotype.Service;
 import com.services.common.dtos.CartItemDTO;
 import com.services.common.dtos.CartResponse;
 import com.services.common.dtos.CreatePaymentLinkRequestDto;
+import com.services.common.dtos.OrderResponse;
 import com.services.common.dtos.UserDTO;
+import com.services.common.enums.OrderStatus;
 import com.services.common.enums.PaymentStatus;
 import com.services.orderservice.clients.CartClient;
 import com.services.orderservice.clients.PaymentClient;
 import com.services.orderservice.clients.ProductClient;
 import com.services.orderservice.clients.UserClient;
-import com.services.orderservice.dtos.OrderResponse;
-import com.services.orderservice.dtos.OrderResponse.OrderItemResponse;
+
+import com.services.common.dtos.OrderResponse.OrderItemResponse;
 import com.services.orderservice.exceptions.BadRequestException;
 import com.services.orderservice.exceptions.CartServiceException;
 import com.services.orderservice.exceptions.InvalidOrderStatusException;
@@ -32,7 +34,6 @@ import com.services.orderservice.exceptions.ProductNotAvailableException;
 import com.services.orderservice.exceptions.UserVerificationException;
 import com.services.orderservice.models.Order;
 import com.services.orderservice.models.OrderItem;
-import com.services.orderservice.models.OrderStatus;
 
 import com.services.orderservice.repositories.OrderRepository;
 
@@ -85,7 +86,7 @@ public class OrderServiceImpl implements OrderService {
         if (jwt == null) {
             throw new UserVerificationException("JWT token is required");
         }
-        
+
         if (addressId == null) {
             throw new BadRequestException("Address ID is required");
         }
@@ -101,10 +102,11 @@ public class OrderServiceImpl implements OrderService {
 
         UserDTO userDetails;
         try {
-            log.debug("Attempting to get user profile with token: {}", token.substring(0, Math.min(50, token.length())) + "...");
+            log.debug("Attempting to get user profile with token: {}",
+                    token.substring(0, Math.min(50, token.length())) + "...");
             ResponseEntity<UserDTO> userResponse = userClient.getMyProfile(token);
             log.debug("User profile response received: {}", userResponse);
-            
+
             if (userResponse == null || userResponse.getBody() == null) {
                 log.error("User profile response is null for user: {}", uid);
                 throw new UserVerificationException("User profile response is null");
@@ -112,10 +114,10 @@ public class OrderServiceImpl implements OrderService {
             userDetails = userResponse.getBody();
             log.info("Successfully retrieved user profile for user: {}, email: {}", uid, userDetails.getEmail());
         } catch (Exception e) {
-            log.error("Failed to get user profile for user: {}, Error: {}, Token length: {}", uid, e.getMessage(), token.length(), e);
+            log.error("Failed to get user profile for user: {}, Error: {}, Token length: {}", uid, e.getMessage(),
+                    token.length(), e);
             throw new UserVerificationException("Failed to get user profile: " + e.getMessage(), e);
         }
-        
 
         CartResponse cartResponse;
         try {
@@ -142,7 +144,7 @@ public class OrderServiceImpl implements OrderService {
             if (item.getProductId() == null || item.getQuantity() <= 0) {
                 throw new BadRequestException("Invalid cart item: product ID or quantity is invalid");
             }
-            
+
             Long productId = Long.parseLong(item.getProductId());
             int requestedQty = item.getQuantity();
 
@@ -197,10 +199,8 @@ public class OrderServiceImpl implements OrderService {
             }
 
             // 4. Clear cart
-            // clearCartAsync(token);
+            clearCartAsync(token);
             // 5. Get payment link
-
-    
 
             CreatePaymentLinkRequestDto paymentRequest = new CreatePaymentLinkRequestDto();
             paymentRequest.setOrderId(savedOrder.getId().toString());
@@ -279,7 +279,8 @@ public class OrderServiceImpl implements OrderService {
                     try {
                         productClient.replenishStock(productId, requestedQty, token);
                     } catch (Exception replenishEx) {
-                        log.error("Failed to replenish stock for product {} after order failure: {}", productId, replenishEx.getMessage(), replenishEx);
+                        log.error("Failed to replenish stock for product {} after order failure: {}", productId,
+                                replenishEx.getMessage(), replenishEx);
                     }
                 }
             }
@@ -288,11 +289,11 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public boolean updateOrderStatus(Long orderId, String status) {
+    public boolean updateOrderStatus(@AuthenticationPrincipal Jwt jwt, Long orderId, String status) {
         if (orderId == null) {
             throw new BadRequestException("Order ID is required");
         }
-        
+
         if (status == null || status.trim().isEmpty()) {
             throw new BadRequestException("Order status is required");
         }
@@ -301,62 +302,112 @@ public class OrderServiceImpl implements OrderService {
         if (order == null) {
             throw new OrderNotFoundException(orderId);
         }
-        
+
         try {
             OrderStatus.valueOf(status);
         } catch (IllegalArgumentException e) {
             throw new InvalidOrderStatusException(status);
         }
-        
+
         order.setStatus(OrderStatus.valueOf(status));
-        
+
         try {
             orderRepository.save(order);
         } catch (Exception e) {
             log.error("Failed to update order status for order: {}", orderId, e);
             throw new RuntimeException("Failed to update order status", e);
         }
-        
-        // Send notification
+
+        // Send notification asynchronously
         try {
-            orderStatusUpdateProducer.sendOrderStatusUpdate(order.getUserId(), order.getId().toString(),
-                    order.getStatus().toString());
+            // Fetch user email using JWT token
+            String userEmail = "";
+            try {
+                String token = "Bearer " + jwt.getTokenValue();
+                ResponseEntity<UserDTO> userResponse = userClient.getMyProfile(token);
+                if (userResponse != null && userResponse.getBody() != null) {
+                    userEmail = userResponse.getBody().getEmail();
+                    log.info("Successfully fetched user email for notification: {}", userEmail);
+                } else {
+                    log.warn("User profile response is null for user: {}", order.getUserId());
+                }
+            } catch (Exception e) {
+                log.error("Failed to fetch user email for notification: {}", order.getUserId(), e);
+                // Continue without user email - notification will be sent to empty email
+            }
+
+            if (!userEmail.isEmpty()) {
+                orderStatusUpdateProducer.sendOrderStatusUpdate(userEmail, order.getId().toString(),
+                        order.getStatus().toString());
+                log.info("Order status update notification sent for order: {} to email: {}", orderId, userEmail);
+            } else {
+                log.warn("Skipping notification for order: {} as user email could not be fetched", orderId);
+            }
         } catch (Exception e) {
             log.error("Failed to send order status update notification for order: {}", orderId, e);
             // Don't throw exception here as status update is successful
         }
-        
+
         return true;
     }
 
     @Override
-    public boolean updatePaymentStatus(Long orderId, PaymentStatus paymentStatus) {
+    public boolean updatePaymentStatus(@AuthenticationPrincipal Jwt jwt, Long orderId, PaymentStatus paymentStatus) {
         if (orderId == null) {
             throw new BadRequestException("Order ID is required");
         }
-        
 
         Order order = orderRepository.findById(orderId).orElse(null);
         if (order == null) {
             throw new OrderNotFoundException(orderId);
         }
-        
+
         order.setPaymentStatus(paymentStatus);
-        
+
         try {
             orderRepository.save(order);
         } catch (Exception e) {
             log.error("Failed to update payment status for order: {}", orderId, e);
             throw new RuntimeException("Failed to update payment status", e);
         }
-        
+
+        // Send notification asynchronously
+        try {
+            // Fetch user email using JWT token
+            String userEmail = "";
+            try {
+                String token = "Bearer " + jwt.getTokenValue();
+                ResponseEntity<UserDTO> userResponse = userClient.getMyProfile(token);
+                if (userResponse != null && userResponse.getBody() != null) {
+                    userEmail = userResponse.getBody().getEmail();
+                    log.info("Successfully fetched user email for payment notification: {}", userEmail);
+                } else {
+                    log.warn("User profile response is null for user: {}", order.getUserId());
+                }
+            } catch (Exception e) {
+                log.error("Failed to fetch user email for payment notification: {}", order.getUserId(), e);
+                // Continue without user email - notification will be sent to empty email
+            }
+
+            if (!userEmail.isEmpty()) {
+                orderStatusUpdateProducer.sendOrderStatusUpdate(userEmail, order.getId().toString(),
+                        "Payment Status: " + order.getPaymentStatus().toString());
+                log.info("Payment status update notification sent for order: {} to email: {}", orderId, userEmail);
+            } else {
+                log.warn("Skipping payment notification for order: {} as user email could not be fetched", orderId);
+            }
+        } catch (Exception e) {
+            log.error("Failed to send payment status update notification for order: {}", orderId, e);
+            // Don't throw exception here as status update is successful
+        }
+
         return true;
     }
 
     @Override
-    public java.util.List<com.services.orderservice.dtos.OrderResponse> getOrdersByUserId(String userId) {
+    public java.util.List<OrderResponse> getOrdersByUserId(String userId) {
         List<Order> orders = orderRepository.findByUserId(userId);
-        List<com.services.orderservice.dtos.OrderResponse> responses = new ArrayList<>();
+        List<OrderResponse> responses = new ArrayList<>();
         for (Order order : orders) {
             responses.add(mapToOrderResponse(order));
         }
@@ -373,8 +424,15 @@ public class OrderServiceImpl implements OrderService {
         return mapToOrderResponse(order);
     }
 
-    private com.services.orderservice.dtos.OrderResponse mapToOrderResponse(Order order) {
-        com.services.orderservice.dtos.OrderResponse dto = new com.services.orderservice.dtos.OrderResponse();
+    @Override
+    public OrderResponse getOrderById(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException(orderId));
+        return mapToOrderResponse(order);
+    }
+
+    private OrderResponse mapToOrderResponse(Order order) {
+        OrderResponse dto = new OrderResponse();
         dto.setId(order.getId().toString());
         dto.setUserId(order.getUserId());
         dto.setItems(new ArrayList<>()); // You may want to map order items as well
@@ -389,7 +447,7 @@ public class OrderServiceImpl implements OrderService {
         // Map order items if needed
         if (order.getItems() != null) {
             for (OrderItem item : order.getItems()) {
-                com.services.orderservice.dtos.OrderResponse.OrderItemResponse itemDto = new com.services.orderservice.dtos.OrderResponse.OrderItemResponse();
+                OrderItemResponse itemDto = new OrderItemResponse();
                 itemDto.setProductId(item.getProductId());
                 itemDto.setProductName(item.getProductName());
                 itemDto.setPrice(item.getPrice());

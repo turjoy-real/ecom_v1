@@ -94,4 +94,16 @@ public class GlobalExceptionHandler {
         errorDetails.put("path", request.getDescription(false));
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorDetails);
     }
+
+    @ExceptionHandler(CartServiceException.class)
+    public ResponseEntity<Map<String, Object>> handleCartServiceException(
+            CartServiceException ex, WebRequest request) {
+        Map<String, Object> errorDetails = new HashMap<>();
+        errorDetails.put("timestamp", LocalDateTime.now());
+        errorDetails.put("message", ex.getMessage());
+        errorDetails.put("status", HttpStatus.BAD_REQUEST.value());
+        errorDetails.put("error", "Cart Error");
+        errorDetails.put("path", request.getDescription(false));
+        return ResponseEntity.badRequest().body(errorDetails);
+    }
 }

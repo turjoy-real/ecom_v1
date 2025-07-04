@@ -1,18 +1,11 @@
 package com.services.paymentservice.controllers;
 
-import com.razorpay.Utils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.services.common.enums.PaymentStatus;
-import com.services.paymentservice.clients.OrderServiceFeignClient;
-import com.services.paymentservice.services.OAuthClientCredentialsService;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.services.paymentservice.services.RazorpayService;
 
 @RestController
 @RequestMapping("/api/razorpay/webhook")
@@ -22,94 +15,26 @@ public class WebhookController {
     @Value("${razorpay.webhook.secret}")
     private String webhookSecret;
 
-    @Autowired
-    private OrderServiceFeignClient orderServiceFeignClient;
-    @Autowired
-    private OAuthClientCredentialsService oAuthClientCredentialsService;
+    private final RazorpayService razorpayService;
 
-    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    public WebhookController(RazorpayService razorpayService) {
+        this.razorpayService = razorpayService;
+    }
+
+    @PostMapping
     public ResponseEntity<String> handleWebhook(
             @RequestBody String payload,
             @RequestHeader("X-Razorpay-Signature") String signature,
             @RequestHeader("X-Razorpay-Event-Id") String eventId) {
-
-        log.debug("Received Razorpay webhook: eventId={}, signature={}", eventId, signature);
-
-        // 1. Validate payload and signature
         try {
-            Utils.verifyWebhookSignature(payload, signature, webhookSecret);
-        } catch (Exception e) {
-            log.error("Invalid Razorpay signature for event {}: {}", eventId, e.getMessage());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid signature");
+            log.info("Received webhook event: {}", eventId);
+            log.info("Payload: {}", payload);
+            // Validate the webhook signature
+            String result = razorpayService.handleWebhook(payload, signature, eventId);
+            return ResponseEntity.ok(result);
+        } catch (RuntimeException e) {
+            log.error("Webhook processing failed: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
-        log.info("✅ Webhook signature validated (eventId={})", eventId);
-
-        // 2. Parse JSON and event type
-        JsonNode json;
-        try {
-            json = new ObjectMapper().readTree(payload);
-            log.info("Successfully parsed webhook payload. Event ID: {}, Payload: {}", eventId, json.toPrettyString());
-        } catch (Exception e) {
-            log.error("Invalid JSON payload: {}", e.getMessage());
-            return ResponseEntity.badRequest().body("Invalid JSON");
-        }
-        String event = json.path("event").asText(null);
-        if (event == null) {
-            log.warn("Ignoring webhook: missing 'event' field");
-            return ResponseEntity.badRequest().body("Missing event");
-        }
-        log.info("Processing Razorpay event: {}", event);
-
-        // 3. Ensure idempotency using event identifier
-        // (Check if eventId already processed in storage; pseudo-code)
-        // if (eventStore.exists(eventId)) { return ResponseEntity.ok("Event ignored");
-        // }
-        // eventStore.record(eventId);
-
-        // 4. Handle events
-        JsonNode payloadEntity = json.path("payload").path("payment").path("entity");
-        switch (event) {
-            case "payment_link.captured":
-                log.info("✅ Payment captured: id={}, amount={}",
-                        payloadEntity.path("id").asText(),
-                        payloadEntity.path("amount").asInt());
-                // Call orderservice to update payment status
-                try {
-                    String orderId = payloadEntity.path("reference_id").asText();
-                    String token = oAuthClientCredentialsService.getToken();
-                    orderServiceFeignClient.updatePaymentStatus(token, Long.valueOf(orderId), PaymentStatus.COMPLETED);
-                    log.info("OrderService payment status updated for orderId={}", orderId);
-                } catch (Exception ex) {
-                    log.error("Failed to update payment status in orderservice", ex);
-                }
-                break;
-            case "payment_link.failed":
-                log.warn("❌ Payment failed: id={}, error={}",
-                        payloadEntity.path("id").asText(),
-                        payloadEntity.path("error_code").asText("UNKNOWN"));
-                // Optionally update order as failed
-                try {
-                    String orderId = payloadEntity.path("reference_id").asText();
-                    String token = oAuthClientCredentialsService.getToken();
-                    orderServiceFeignClient.updatePaymentStatus(token, Long.valueOf(orderId), PaymentStatus.FAILED);
-                    log.info("OrderService payment status updated for orderId={}", orderId);
-                } catch (Exception ex) {
-                    log.error("Failed to update payment status in orderservice", ex);
-                }
-                break;
-            case "payment_link.paid":
-                log.info("🔗 Payment syccessful: id={}, short_url={}",
-                        payloadEntity.path("id").asText(),
-                        payloadEntity.path("amount").asInt());
-                break;
-            default:
-                log.info("ℹ️ Unhandled event: {}", event);
-                return ResponseEntity.ok("Event ignored");
-        }
-
-        // 5. Business logic (e.g., update DB, order status)
-        // orderService.updateStatus(...);
-
-        return ResponseEntity.ok("Webhook processed");
     }
 }

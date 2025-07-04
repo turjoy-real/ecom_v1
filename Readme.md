@@ -17,6 +17,7 @@ A comprehensive e-commerce platform built with Spring Boot microservices archite
 ## Installing Prerequisites Locally
 
 ### Install Elasticsearch
+
 - Download and extract from [Elasticsearch Downloads](https://www.elastic.co/downloads/elasticsearch)
 - Start Elasticsearch:
   ```bash
@@ -25,6 +26,7 @@ A comprehensive e-commerce platform built with Spring Boot microservices archite
   (or use the Windows `.bat` file)
 
 ### Install Kafka
+
 - Download and extract from [Kafka Downloads](https://kafka.apache.org/downloads)
 - Start Zookeeper (required for Kafka):
   ```bash
@@ -36,6 +38,7 @@ A comprehensive e-commerce platform built with Spring Boot microservices archite
   ```
 
 ### Install Redis
+
 - On macOS:
   ```bash
   brew install redis
@@ -54,76 +57,108 @@ A comprehensive e-commerce platform built with Spring Boot microservices archite
 ## 🚀 Quick Start: Running the Services
 
 ### 1. Clone the repository
+
 ```bash
-git clone <repository-url>
+git clone https://github.com/turjoy-real/ecom_v1.git
 cd ecom_v1
 ```
 
-### 2. Start infrastructure services and core dependencies
-- Ensure the following are running **before starting any microservice**:
-  - **Service Discovery** (Eureka):
-    ```bash
-    cd servicediscovery && mvn spring-boot:run
-    ```
-  - **OAuth Server** (for authentication):
-    ```bash
-    cd oauthserver && mvn spring-boot:run
-    ```
-  - **Elasticsearch**
-  - **Redis**
-  - **MongoDB** (local or Atlas)
-  - **Kafka**
-  - **MySQL**
+### 2. Generate Private and Public Key Files for OAuth Server
 
-  You can use your preferred method to start these services (local installations, cloud services, or your own container setup).
-
-### 3. Generate private and public key files for OAuth Server
-- The OAuth server requires a private key for signing tokens and a public key for verification. Generate both and place them in `oauthserver/src/main/resources/`:
+The OAuth server requires a private key for signing tokens and a public key for verification. Generate both and place them in `oauthserver/src/main/resources/`:
 
 ```bash
-# Generate a 4096-bit RSA private key
+# Generate a 2048-bit RSA private key
 openssl genpkey -algorithm RSA -out oauthserver/src/main/resources/private-key.pem -pkeyopt rsa_keygen_bits:2048
 
 # Extract the public key from the private key
 openssl rsa -pubout -in oauthserver/src/main/resources/private-key.pem -out oauthserver/src/main/resources/public-key.pem
 ```
 
-### 4. Configure application.properties for Each Service
-- Each service requires its own `application.properties` file for configuration.
-- Example locations:
-  - `userservice/src/main/resources/application.properties`
-  - `productservice/src/main/resources/application.properties`
-  - `cartservice/src/main/resources/application.properties`
-  - `orderservice/src/main/resources/application.properties`
-  - `paymentservice/src/main/resources/application.properties`
-  - `notificationservice/src/main/resources/application.properties`
-  - `oauthserver/src/main/resources/application.properties`
-- You can use editors like **VSCode** or **IntelliJ IDEA** to easily edit these files. Both provide syntax highlighting and search features for `.properties` files.
-- Example configuration for a service:
-  ```properties
-  spring.datasource.url=jdbc:mysql://localhost:3306/your_db
-  spring.datasource.username=your_user
-  spring.datasource.password=your_pass
-  spring.data.redis.url=redis://localhost:6379
-  spring.kafka.bootstrap-servers=localhost:9092
-  # Add other service-specific properties as needed
-  ```
+### 3. Configure Environment Variables
+
+You can use the `launch_copy.json` template for setting environment variables for different functions in VSCode or IntelliJ IDEA. This helps avoid passing environment variables manually.
+
+### 4. Ensure Infrastructure Services are Running
+
+**Before starting any microservice**, ensure these services are running:
+
+- **MySQL** (Database)
+- **MongoDB** (local or Atlas)
+- **Redis** (Caching)
+- **Kafka** (Message Broker)
+- **Elasticsearch** (Search Engine)
+
+Make sure the `application.properties` files of all services are properly configured or the right environment variables are passed to services before they start.
 
 ### 5. Build all services
+
 ```bash
 mvn clean install -DskipTests
 ```
 
-### 6. Run each service (in separate terminals, after dependencies are up)
-```bash
-cd userservice && mvn spring-boot:run
-cd productservice && mvn spring-boot:run
-cd cartservice && mvn spring-boot:run
-cd orderservice && mvn spring-boot:run
-cd paymentservice && mvn spring-boot:run
-cd notificationservice && mvn spring-boot:run
-cd gateway && mvn spring-boot:run
-```
+### 6. Start Services in the Correct Order
+
+**IMPORTANT**: Start services in this exact order to ensure proper service discovery and dependencies:
+
+1. **Service Discovery** (Eureka)
+2. **OAuth Server** (Port 9001)
+3. **User Service**
+4. **Product Service**
+5. **Cart Service**
+6. **Order Service**
+7. **Payment Service**
+8. **Gateway** (API Gateway)
+
+### 7. Verify Service Discovery
+
+- Check the Eureka dashboard at `http://localhost:8761/`
+- **CRITICAL**: Ensure that local URLs of services are the same as gateway, otherwise gateway cannot detect using service discovery
+- **Example of conflict**: `192.168.29.50:paymentservice:5002` and `turjoys-macbook-air.local:oauthserver:9001` will conflict
+- All services should use consistent hostnames/IPs in their configuration
+
+### 8. Recommended: Run Using IDE
+
+- Use your preferred IDE (VSCode or IntelliJ IDEA) to run the services
+- This helps avoid passing environment variables manually
+- Configure launch configurations using the `launch_copy.json` template
+
+---
+
+## 🧪 Testing and Development Setup
+
+### Setting Up Mocks
+
+- Configure mock services for external dependencies
+- Set up test doubles for database, message queues, and external APIs
+- Use Mockito or similar frameworks for unit testing
+
+### Unit and Integration Tests
+
+- Run unit tests: `mvn test`
+- Run integration tests: `mvn verify`
+- Configure test profiles for different environments
+- Set up test databases and mock external services
+
+### Database Migrations
+
+For database setup and migration scripts, refer to the detailed documentation in [ProductService README](productservice/README.md).
+
+---
+
+## 🔧 Important Configuration Notes
+
+### OAuth Server Configuration
+
+- The OAuth server runs on port **9001**
+- If you need to change the port, make necessary changes in the `spa-client` configuration in the OAuth server's `SecurityConfig`
+- Ensure the private and public key files (`.pem`) are properly generated and placed in the resources folder
+
+### Service Discovery Considerations
+
+- All services must register with the same Eureka server
+- Hostnames and IPs must be consistent across all services
+- Check the Eureka dashboard to verify all services are properly registered
 
 ---
 
@@ -136,7 +171,7 @@ ecom_v1/
 ├── cartservice/          # Shopping cart service
 ├── orderservice/         # Order management service
 ├── paymentservice/       # Payment processing service
-├── oauthserver/          # OAuth2 authorization server
+├── oauthserver/          # OAuth2 authorization server (Port 9001)
 ├── gateway/              # API gateway
 ├── notificationservice/  # Notification service
 ├── servicediscovery/     # Service discovery

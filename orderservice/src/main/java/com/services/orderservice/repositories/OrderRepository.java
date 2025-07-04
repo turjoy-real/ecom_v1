@@ -1,8 +1,9 @@
 package com.services.orderservice.repositories;
 
+import com.services.common.enums.OrderStatus;
 import com.services.common.enums.PaymentStatus;
 import com.services.orderservice.models.Order;
-import com.services.orderservice.models.OrderStatus;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 

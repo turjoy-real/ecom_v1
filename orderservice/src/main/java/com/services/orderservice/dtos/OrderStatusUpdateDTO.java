@@ -2,7 +2,7 @@ package com.services.orderservice.dtos;
 
 import java.time.LocalDateTime;
 
-import com.services.orderservice.models.OrderStatus;
+import com.services.common.enums.OrderStatus;
 
 import lombok.Data;
 

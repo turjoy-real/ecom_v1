@@ -5,7 +5,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import com.services.orderservice.models.OrderStatus;
+import com.services.common.enums.OrderStatus;
 
 @Data
 public class OrderResponseDTO {
