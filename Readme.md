@@ -207,6 +207,241 @@ This guide covers:
 
 ---
 
+## 📊 Monitoring and Observability
+
+### Spring Boot Actuators
+
+All microservices include Spring Boot Actuator endpoints for monitoring and health checks. These endpoints provide the foundation for comprehensive observability and integrate seamlessly with Prometheus and Grafana.
+
+#### Available Actuator Endpoints
+
+Each service exposes the following monitoring endpoints:
+
+```bash
+# Health Checks
+GET /actuator/health                    # Overall application health
+GET /actuator/health/db                # Database health status
+GET /actuator/health/redis             # Redis connection health
+GET /actuator/health/elasticsearch     # Elasticsearch health (Product Service)
+
+# Metrics and Monitoring
+GET /actuator/metrics                   # All available metrics
+GET /actuator/metrics/{metric.name}    # Specific metric details
+GET /actuator/prometheus               # Prometheus-compatible metrics
+
+# Application Information
+GET /actuator/info                     # Application information
+GET /actuator/env                      # Environment variables
+GET /actuator/configprops              # Configuration properties
+GET /actuator/beans                    # Spring beans information
+
+# Application Management
+GET /actuator/mappings                 # Request mappings
+GET /actuator/loggers                  # Logger configurations
+POST /actuator/loggers/{logger.name}  # Update logger level
+```
+
+#### Key Metrics Exposed
+
+- **JVM Metrics**: Memory usage, garbage collection, thread statistics
+- **HTTP Metrics**: Request counts, response times, error rates
+- **Database Metrics**: Connection pool status, query performance
+- **Custom Business Metrics**: Order counts, payment success rates, user registrations
+
+### Prometheus Integration
+
+The actuator endpoints are designed to work seamlessly with Prometheus for metrics collection:
+
+#### Prometheus Configuration
+
+```yaml
+# prometheus.yml
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'ecommerce-microservices'
+    static_configs:
+      - targets: 
+        - 'localhost:8080'  # Gateway
+        - 'localhost:9001'  # OAuth Server
+        - 'localhost:5001'  # User Service
+        - 'localhost:5002'  # Product Service
+        - 'localhost:5003'  # Cart Service
+        - 'localhost:5004'  # Order Service
+        - 'localhost:5005'  # Payment Service
+        - 'localhost:5006'  # Notification Service
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 10s
+```
+
+#### Metrics Collection
+
+Prometheus automatically scrapes the `/actuator/prometheus` endpoint from each service, collecting:
+- **System Metrics**: CPU, memory, disk usage
+- **Application Metrics**: Request rates, response times, error rates
+- **Business Metrics**: Custom counters and gauges
+- **Dependency Health**: Database, Redis, Elasticsearch status
+
+### Grafana Dashboards
+
+The collected metrics can be visualized using Grafana dashboards:
+
+#### Pre-configured Dashboards
+
+1. **System Overview Dashboard**
+   - Service health status
+   - Response time trends
+   - Error rate monitoring
+   - Resource utilization
+
+2. **Business Metrics Dashboard**
+   - Order processing rates
+   - Payment success/failure rates
+   - User registration trends
+   - Product catalog statistics
+
+3. **Infrastructure Dashboard**
+   - Database performance
+   - Redis cache hit rates
+   - Kafka message throughput
+   - Elasticsearch query performance
+
+#### Dashboard Configuration
+
+```json
+{
+  "dashboard": {
+    "title": "E-Commerce Microservices",
+    "panels": [
+      {
+        "title": "Service Health",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"ecommerce-microservices\"}",
+            "legendFormat": "{{instance}}"
+          }
+        ]
+      },
+      {
+        "title": "Response Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(http_server_requests_seconds_sum[5m])",
+            "legendFormat": "{{instance}} - {{uri}}"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### Alerting Configuration
+
+Set up alerts for critical metrics:
+
+```yaml
+# alerting.yml
+groups:
+  - name: ecommerce-alerts
+    rules:
+      - alert: ServiceDown
+        expr: up{job="ecommerce-microservices"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.instance }} is down"
+          
+      - alert: HighErrorRate
+        expr: rate(http_server_requests_seconds_count{status=~"5.."}[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate on {{ $labels.instance }}"
+          
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_server_requests_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High response time on {{ $labels.instance }}"
+```
+
+### Kubernetes Monitoring
+
+When deployed on Kubernetes, the monitoring stack includes:
+
+#### Prometheus Operator
+- **ServiceMonitor**: Automatically discovers services
+- **PrometheusRule**: Defines alerting rules
+- **AlertManager**: Handles alert routing and notifications
+
+#### Grafana Operator
+- **Grafana**: Pre-configured dashboards
+- **DataSource**: Automatic Prometheus connection
+- **Dashboard**: Import business-specific dashboards
+
+### Monitoring Best Practices
+
+1. **Health Checks**: All services implement comprehensive health checks
+2. **Metrics Collection**: Standardized metrics across all services
+3. **Alerting**: Proactive alerting for critical issues
+4. **Dashboard**: Real-time visibility into system performance
+5. **Logging**: Structured logging for correlation with metrics
+
+### Troubleshooting Monitoring
+
+#### Common Issues
+
+1. **Actuator Endpoints Not Accessible**
+   ```bash
+   # Check if actuator is enabled
+   curl http://localhost:8080/actuator/health
+   
+   # Verify security configuration
+   # Ensure /actuator/** endpoints are accessible
+   ```
+
+2. **Prometheus Not Scraping**
+   ```bash
+   # Check Prometheus targets
+   curl http://localhost:9090/api/v1/targets
+   
+   # Verify service endpoints
+   curl http://localhost:8080/actuator/prometheus
+   ```
+
+3. **Grafana Dashboard Issues**
+   ```bash
+   # Check data source connection
+   # Verify Prometheus URL in Grafana
+   # Check dashboard queries
+   ```
+
+#### Monitoring Commands
+
+```bash
+# Check service health
+curl -s http://localhost:8080/actuator/health | jq
+
+# View metrics
+curl -s http://localhost:8080/actuator/metrics | jq
+
+# Check Prometheus targets
+curl -s http://localhost:9090/api/v1/targets | jq
+
+# Test Grafana connection
+curl -s http://localhost:3000/api/health
+```
+
+---
+
 ## 🗂️ Project Structure
 
 ```
