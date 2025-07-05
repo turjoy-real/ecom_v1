@@ -1,0 +1,140 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Current File",
+            "request": "launch",
+            "mainClass": "${file}"
+        },
+        {
+            "type": "java",
+            "name": "CartserviceApplication",
+            "request": "launch",
+            "mainClass": "com.services.cartservice.CartserviceApplication",
+            "projectName": "cartservice",
+            "env": {
+                "PORT": "7001",
+                "EUREKA_SERVER": "http://localhost:8761/eureka/",
+                "REDIS_URL": "redis://localhost:6379",
+                "MONGO_DB_URL": "mongodb+srv://YOUR_USERNAME:YOUR_PASSWORD@YOUR_CLUSTER.mongodb.net/",
+                "MONGO_DB_NAME": "cart",
+                "JWT_ISSUER_URI": "http://localhost:9001"
+            }
+        },
+        {
+            "type": "java",
+            "name": "GatewayApplication",
+            "request": "launch",
+            "mainClass": "com.services.gateway.GatewayApplication",
+            "projectName": "gateway"
+        },
+        {
+            "type": "java",
+            "name": "NotificationserviceApplication",
+            "request": "launch",
+            "mainClass": "com.services.notificationservice.NotificationserviceApplication",
+            "projectName": "notificationservice",
+            "env": {
+                "SMTP_USERNAME": "YOUR_EMAIL@gmail.com",
+                "SMTP_PASSWORD": "YOUR_APP_PASSWORD",
+                "SMTP_HOST": "smtp.gmail.com",
+                "SMTP_PORT": "587",
+                "SERVER_PORT": "5001"
+            }
+        },
+        {
+            "type": "java",
+            "name": "OauthserverApplication",
+            "request": "launch",
+            "mainClass": "com.services.oauthserver.OauthserverApplication",
+            "projectName": "oauthserver",
+            "env": {
+                "DB_URL": "mysql://localhost:3306/user_db",
+                "DB_USER": "YOUR_DB_USERNAME",
+                "DB_PASS": "YOUR_DB_PASSWORD",
+                "SERVER_PORT": "9001",
+                "EUREKA_SERVER": "http://localhost:8761/eureka",
+                "GOOGLE_CLIENT_ID": "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com",
+                "GOOGLE_CLIENT_SECRET": "YOUR_GOOGLE_CLIENT_SECRET",
+                "ADMIN_EMAIL": "admin@yourdomain.com",
+                "ADMIN_PASSWORD": "YOUR_ADMIN_PASSWORD"
+            }
+        },
+        {
+            "type": "java",
+            "name": "OrderserviceApplication",
+            "request": "launch",
+            "mainClass": "com.services.orderservice.OrderserviceApplication",
+            "projectName": "orderservice",
+            "env": {
+                "DB_URL": "mysql://localhost:3306/order_db",
+                "DB_USER": "YOUR_DB_USERNAME",
+                "DB_PASS": "YOUR_DB_PASSWORD",
+                "EUREKA_SERVER": "http://localhost:8761/eureka/",
+                "SERVER_PORT": "6000",
+                "JWT_ISSUER_URI": "http://localhost:9001"
+            }
+        },
+        {
+            "type": "java",
+            "name": "PaymentserviceApplication",
+            "request": "launch",
+            "mainClass": "com.services.paymentservice.PaymentserviceApplication",
+            "projectName": "paymentservice",
+            "env": {
+                "RAZORPAY_KEY_ID": "YOUR_RAZORPAY_KEY_ID",
+                "RAZORPAY_KEY_SECRET": "YOUR_RAZORPAY_KEY_SECRET",
+                "RAZORPAY_WEBHOOK_SECRET": "YOUR_WEBHOOK_SECRET",
+                "SERVER_PORT": "5002",
+                "DB_PASS": "YOUR_DB_PASSWORD",
+                "DB_URL": "mysql://localhost:3306/transaction_db",
+                "DB_USER": "YOUR_DB_USERNAME",
+                "EUREKA_SERVER": "http://localhost:8761/eureka/",
+                "JWT_ISSUER_URI": "http://localhost:9001"
+            }
+        },
+        {
+            "type": "java",
+            "name": "ProductserviceApplication",
+            "request": "launch",
+            "mainClass": "com.services.productservice.ProductserviceApplication",
+            "projectName": "productservice",
+            "env": {
+                "DB_URL": "mysql://localhost:3306/product_db",
+                "DB_USER": "YOUR_DB_USERNAME",
+                "DB_PASS": "YOUR_DB_PASSWORD",
+                "ELASTIC_PASS": "YOUR_ELASTICSEARCH_PASSWORD",
+                "ELASTIC_URL": "http://localhost:9200",
+                "ELASTIC_API_KEY": "YOUR_ELASTICSEARCH_API_KEY",
+                "ELASTIC_USER": "elastic",
+                "PORT": "8000",
+                "EUREKA_SERVER": "http://localhost:8761/eureka/",
+                "REDIS_URL": "redis://localhost:6379",
+                "JWT_ISSUER_URI": "http://localhost:9001"
+            }
+        },
+        {
+            "type": "java",
+            "name": "ServicediscoveryApplication",
+            "request": "launch",
+            "mainClass": "com.services.servicediscovery.ServicediscoveryApplication",
+            "projectName": "servicediscovery"
+        },
+        {
+            "type": "java",
+            "name": "UserserviceApplication",
+            "request": "launch",
+            "mainClass": "com.services.userservice.UserserviceApplication",
+            "projectName": "userservice",
+            "env": {
+                "DB_URL": "mysql://localhost:3306/user_db",
+                "DB_USER": "YOUR_DB_USERNAME",
+                "DB_PASS": "YOUR_DB_PASSWORD",
+                "SERVER_PORT": "9002",
+                "EUREKA_SERVER": "http://localhost:8761/eureka",
+                "JWT_ISSUER_URI": "http://localhost:9001"
+            }
+        }
+    ]
+} 

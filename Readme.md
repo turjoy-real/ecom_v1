@@ -99,7 +99,16 @@ openssl rsa -pubout -in oauthserver/src/main/resources/private-key.pem -out oaut
 
 ### 3. Configure Environment Variables
 
-You can use the `launch_copy.json` template for setting environment variables for different functions in VSCode or IntelliJ IDEA. This helps avoid passing environment variables manually.
+You can use the launch configuration template for setting environment variables for different functions in VSCode or IntelliJ IDEA. This helps avoid passing environment variables manually.
+
+**[📖 Launch Configuration Guide](docs/launch_configuration_guide.md)**
+
+This guide provides:
+- **Template Setup** - Copy and configure the launch configuration template
+- **Service-Specific Configurations** - Detailed setup for each microservice
+- **External Service Setup** - Database, cache, and third-party service configuration
+- **Debugging Instructions** - How to run and debug services from VS Code
+- **Troubleshooting** - Common issues and solutions
 
 ### 4. Ensure Infrastructure Services are Running
 
