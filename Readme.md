@@ -149,6 +149,19 @@ mvn clean install -DskipTests
 
 ## 🧪 Testing and Development Setup
 
+### Comprehensive Testing Strategy
+
+For detailed testing setup and best practices, see our comprehensive testing guide:
+
+**[📖 Product Service Testing Guide](productservice/testing_guide.md)**
+
+This guide covers:
+- **Test Pyramid Implementation** - Unit, Integration, and Context Load tests
+- **Mocking Strategies** - Proper isolation of dependencies
+- **Spring Boot Test Configuration** - Special configurations for microservices testing
+- **Troubleshooting Tips** - Common issues and solutions
+- **Test Execution** - How to run specific test types
+
 ### Setting Up Mocks
 
 - Configure mock services for external dependencies
@@ -164,7 +177,17 @@ mvn clean install -DskipTests
 
 ### Database Migrations
 
-For database setup and migration scripts, refer to the detailed documentation in [ProductService README](productservice/README.md).
+For database setup and migration scripts, refer to the detailed documentation:
+
+**[📖 Product Service Database Migration Guide](productservice/db_migration_guide.md)**
+
+This guide covers:
+- **Database Setup** - MySQL configuration and prerequisites
+- **Migration Scripts** - Flyway migration management
+- **Schema Design** - Table structures and relationships
+- **Environment Configuration** - Development, testing, and production setups
+- **Best Practices** - Migration strategies and performance optimization
+- **Troubleshooting** - Common issues and recovery procedures
 
 ---
 
