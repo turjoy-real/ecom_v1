@@ -1,25 +1,27 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: productservice
+  name: oauthserver
   namespace: ecom-v1
-  labels:
-    app: productservice
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
-      app: productservice
+      app: oauthserver
   template:
     metadata:
       labels:
-        app: productservice
+        app: oauthserver
     spec:
       containers:
-        - name: productservice
-          image: productservice:latest
+        - name: oauthserver
+          image: oauthserver:latest
           imagePullPolicy: Never
+          ports:
+            - containerPort: 9001
           env:
+            - name: SERVER_PORT
+              value: "9001"
             - name: DB_URL
               valueFrom:
                 configMapKeyRef:
@@ -35,56 +37,54 @@ spec:
                 secretKeyRef:
                   name: ecom-secrets
                   key: DB_PASS
-            - name: PORT
-              value: "8000"
-            - name: ELASTIC_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: ecom-config
-                  key: ELASTIC_URL
-            - name: ELASTIC_USER
-              valueFrom:
-                configMapKeyRef:
-                  name: ecom-config
-                  key: ELASTIC_USER
-            - name: ELASTIC_PASS
-              valueFrom:
-                secretKeyRef:
-                  name: ecom-secrets
-                  key: ELASTIC_PASS
-            - name: ELASTIC_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: ecom-secrets
-                  key: ELASTIC_API_KEY
             - name: EUREKA_SERVER
               valueFrom:
                 configMapKeyRef:
                   name: ecom-config
                   key: EUREKA_SERVER
-            - name: REDIS_URL
+            - name: KAFKA_BOOTSTRAP_SERVERS
               valueFrom:
                 configMapKeyRef:
                   name: ecom-config
-                  key: REDIS_URL
-            - name: JWT_ISSUER_URI
+                  key: KAFKA_BOOTSTRAP_SERVERS
+            - name: GOOGLE_CLIENT_ID
               valueFrom:
                 configMapKeyRef:
                   name: ecom-config
-                  key: JWT_ISSUER_URI
-          ports:
-            - containerPort: 8000
+                  key: GOOGLE_CLIENT_ID
+            - name: GOOGLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: ecom-secrets
+                  key: GOOGLE_CLIENT_SECRET
+            - name: ADMIN_EMAIL
+              valueFrom:
+                configMapKeyRef:
+                  name: ecom-config
+                  key: ADMIN_EMAIL
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ecom-secrets
+                  key: ADMIN_PASSWORD
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "300m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: productservice
+  name: oauthserver
   namespace: ecom-v1
 spec:
   selector:
-    app: productservice
+    app: oauthserver
   ports:
     - protocol: TCP
-      port: 8000
-      targetPort: 8000
-  type: ClusterIP
+      port: 9001
+      targetPort: 9001
+  type: ClusterIP 

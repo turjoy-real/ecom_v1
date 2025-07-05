@@ -63,15 +63,6 @@ This document explains the testing strategy for the Product Service, including t
 
 ---
 
-## Security in Tests
-- **SecurityConfig** is annotated with `@Profile("!test")`, so it is not loaded when the `test` profile is active.
-- **Test profile activation:** `spring.profiles.active=test` is set in `src/test/resources/application.properties` to ensure the `test` profile is active during tests.
-- **Security auto-configurations** are excluded in test properties using `spring.autoconfigure.exclude` to prevent Spring Boot from creating security beans (including for actuator endpoints and OAuth2 resource server).
-- **No real JWT/OAuth2 setup is needed** for tests, and no security beans interfere with controller or integration tests.
-- **Why:** This approach ensures that security does not block or complicate controller and integration tests, and avoids the need for real tokens or external auth servers.
-
----
-
 ## How to Run Tests
 
 From the `productservice` directory:

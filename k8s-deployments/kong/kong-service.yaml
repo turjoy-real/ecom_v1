@@ -2,13 +2,21 @@ apiVersion: v1
 kind: Service
 metadata:
   name: kong
+  namespace: ecom-v1
 spec:
   selector:
     app: kong
   ports:
-    - protocol: TCP
+    - name: proxy
+      protocol: TCP
       port: 8000
       targetPort: 8000
-    - protocol: TCP
+    - name: proxy-ssl
+      protocol: TCP
       port: 8443
       targetPort: 8443
+    - name: admin
+      protocol: TCP
+      port: 8001
+      targetPort: 8001
+  type: LoadBalancer

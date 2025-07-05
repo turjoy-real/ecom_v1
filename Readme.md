@@ -14,6 +14,28 @@ A comprehensive e-commerce platform built with Spring Boot microservices archite
 
 ---
 
+## 🚀 Deployment Options
+
+### Option 1: Local Development Setup
+
+Follow the instructions below for local development with individual service startup.
+
+### Option 2: Kubernetes Deployment (Recommended for Production)
+
+For production-ready deployment using Docker and Kubernetes with minikube, see our comprehensive guide:
+
+**[📖 Kubernetes Deployment Guide](docs/kubernetes-deployment-guide.md)**
+
+This guide includes:
+- Complete Docker and Kubernetes setup
+- Automated deployment with minikube
+- API Gateway configuration with Kong
+- Monitoring with Grafana and Prometheus
+- Security best practices with Kubernetes Secrets
+- Troubleshooting and scaling guidelines
+
+---
+
 ## Installing Prerequisites Locally
 
 ### Install Elasticsearch

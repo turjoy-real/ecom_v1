@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: servicediscovery
+  namespace: ecom-v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: servicediscovery
+  template:
+    metadata:
+      labels:
+        app: servicediscovery
+    spec:
+      containers:
+        - name: servicediscovery
+          image: servicediscovery:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8761
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "kubernetes"
+            - name: SERVER_PORT
+              value: "8761"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "200m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: servicediscovery
+  namespace: ecom-v1
+spec:
+  selector:
+    app: servicediscovery
+  ports:
+    - protocol: TCP
+      port: 8761
+      targetPort: 8761
+  type: ClusterIP 

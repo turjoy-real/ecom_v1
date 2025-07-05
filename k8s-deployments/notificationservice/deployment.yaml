@@ -1,68 +1,70 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: userservice
+  name: notificationservice
   namespace: ecom-v1
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: userservice
+      app: notificationservice
   template:
     metadata:
       labels:
-        app: userservice
+        app: notificationservice
     spec:
       containers:
-        - name: userservice
-          image: userservice:latest
+        - name: notificationservice
+          image: notificationservice:latest
           imagePullPolicy: Never
           ports:
-            - containerPort: 9002
+            - containerPort: 5001
           env:
-            - name: DB_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: ecom-config
-                  key: DB_URL
             - name: SERVER_PORT
-              value: "9002"
-            - name: EUREKA_SERVER
+              value: "5001"
+            - name: SMTP_HOST
               valueFrom:
                 configMapKeyRef:
                   name: ecom-config
-                  key: EUREKA_SERVER
-            - name: DB_USER
+                  key: SMTP_HOST
+            - name: SMTP_PORT
               valueFrom:
                 configMapKeyRef:
                   name: ecom-config
-                  key: DB_USER
-            - name: DB_PASS
+                  key: SMTP_PORT
+            - name: SMTP_USERNAME
+              valueFrom:
+                configMapKeyRef:
+                  name: ecom-config
+                  key: SMTP_USERNAME
+            - name: SMTP_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: ecom-secrets
-                  key: DB_PASS
-            - name: JWT_ISSUER_URI
-              valueFrom:
-                configMapKeyRef:
-                  name: ecom-config
-                  key: JWT_ISSUER_URI
+                  key: SMTP_PASSWORD
             - name: KAFKA_BOOTSTRAP_SERVERS
               valueFrom:
                 configMapKeyRef:
                   name: ecom-config
                   key: KAFKA_BOOTSTRAP_SERVERS
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "200m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: userservice
+  name: notificationservice
   namespace: ecom-v1
 spec:
   selector:
-    app: userservice
+    app: notificationservice
   ports:
     - protocol: TCP
-      port: 9002
-      targetPort: 9002
-  type: ClusterIP
+      port: 5001
+      targetPort: 5001
+  type: ClusterIP 

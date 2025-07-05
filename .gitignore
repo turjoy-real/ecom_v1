@@ -43,4 +43,7 @@ build/
 *.pem
 
 
-common/target/
+**/target/
+
+k8s-deployments/ecom-secrets.yaml
+k8s-deployments/configmaps.yaml

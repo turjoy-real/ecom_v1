@@ -1,68 +1,75 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: userservice
+  name: cartservice
   namespace: ecom-v1
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: userservice
+      app: cartservice
   template:
     metadata:
       labels:
-        app: userservice
+        app: cartservice
     spec:
       containers:
-        - name: userservice
-          image: userservice:latest
+        - name: cartservice
+          image: cartservice:latest
           imagePullPolicy: Never
           ports:
-            - containerPort: 9002
+            - containerPort: 7001
           env:
-            - name: DB_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: ecom-config
-                  key: DB_URL
-            - name: SERVER_PORT
-              value: "9002"
+            - name: PORT
+              value: "7001"
             - name: EUREKA_SERVER
               valueFrom:
                 configMapKeyRef:
                   name: ecom-config
                   key: EUREKA_SERVER
-            - name: DB_USER
+            - name: MONGO_DB_URL
               valueFrom:
                 configMapKeyRef:
                   name: ecom-config
-                  key: DB_USER
-            - name: DB_PASS
+                  key: MONGO_DB_URL
+            - name: MONGO_DB_NAME
               valueFrom:
-                secretKeyRef:
-                  name: ecom-secrets
-                  key: DB_PASS
+                configMapKeyRef:
+                  name: ecom-config
+                  key: MONGO_DB_NAME
+            - name: REDIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: ecom-config
+                  key: REDIS_URL
             - name: JWT_ISSUER_URI
               valueFrom:
                 configMapKeyRef:
                   name: ecom-config
                   key: JWT_ISSUER_URI
-            - name: KAFKA_BOOTSTRAP_SERVERS
+            - name: ORDER_SERVICE_URL
               valueFrom:
                 configMapKeyRef:
                   name: ecom-config
-                  key: KAFKA_BOOTSTRAP_SERVERS
+                  key: ORDER_SERVICE_URL
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "200m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: userservice
+  name: cartservice
   namespace: ecom-v1
 spec:
   selector:
-    app: userservice
+    app: cartservice
   ports:
     - protocol: TCP
-      port: 9002
-      targetPort: 9002
-  type: ClusterIP
+      port: 7001
+      targetPort: 7001
+  type: ClusterIP 

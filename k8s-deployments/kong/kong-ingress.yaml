@@ -2,15 +2,33 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: kong-ingress
+  namespace: ecom-v1
+  annotations:
+    konghq.com/strip-path: "true"
 spec:
+  ingressClassName: kong
   rules:
-    - host: api.mydomain.com
+    - host: api.ecom.local
       http:
         paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway
+                port:
+                  number: 9000
+          - path: /oauth
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway
+                port:
+                  number: 9000
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: kong
+                name: gateway
                 port:
-                  number: 8000
+                  number: 9000

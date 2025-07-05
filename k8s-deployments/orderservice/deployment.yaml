@@ -1,25 +1,27 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: productservice
+  name: orderservice
   namespace: ecom-v1
-  labels:
-    app: productservice
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: productservice
+      app: orderservice
   template:
     metadata:
       labels:
-        app: productservice
+        app: orderservice
     spec:
       containers:
-        - name: productservice
-          image: productservice:latest
+        - name: orderservice
+          image: orderservice:latest
           imagePullPolicy: Never
+          ports:
+            - containerPort: 6000
           env:
+            - name: SERVER_PORT
+              value: "6000"
             - name: DB_URL
               valueFrom:
                 configMapKeyRef:
@@ -35,56 +37,59 @@ spec:
                 secretKeyRef:
                   name: ecom-secrets
                   key: DB_PASS
-            - name: PORT
-              value: "8000"
-            - name: ELASTIC_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: ecom-config
-                  key: ELASTIC_URL
-            - name: ELASTIC_USER
-              valueFrom:
-                configMapKeyRef:
-                  name: ecom-config
-                  key: ELASTIC_USER
-            - name: ELASTIC_PASS
-              valueFrom:
-                secretKeyRef:
-                  name: ecom-secrets
-                  key: ELASTIC_PASS
-            - name: ELASTIC_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: ecom-secrets
-                  key: ELASTIC_API_KEY
             - name: EUREKA_SERVER
               valueFrom:
                 configMapKeyRef:
                   name: ecom-config
                   key: EUREKA_SERVER
-            - name: REDIS_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: ecom-config
-                  key: REDIS_URL
             - name: JWT_ISSUER_URI
               valueFrom:
                 configMapKeyRef:
                   name: ecom-config
                   key: JWT_ISSUER_URI
-          ports:
-            - containerPort: 8000
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: ecom-config
+                  key: KAFKA_BOOTSTRAP_SERVERS
+            - name: CART_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: ecom-config
+                  key: CART_SERVICE_URL
+            - name: PAYMENT_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: ecom-config
+                  key: PAYMENT_SERVICE_URL
+            - name: USER_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: ecom-config
+                  key: USER_SERVICE_URL
+            - name: PRODUCT_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: ecom-config
+                  key: PRODUCT_SERVICE_URL
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "300m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: productservice
+  name: orderservice
   namespace: ecom-v1
 spec:
   selector:
-    app: productservice
+    app: orderservice
   ports:
     - protocol: TCP
-      port: 8000
-      targetPort: 8000
-  type: ClusterIP
+      port: 6000
+      targetPort: 6000
+  type: ClusterIP 

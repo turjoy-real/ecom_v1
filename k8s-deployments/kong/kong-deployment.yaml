@@ -2,11 +2,48 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: kong
-template:
-  metadata:
-    labels:
+  namespace: ecom-v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
       app: kong
-  spec:
-    containers:
-      - name: kong
-        image: kong/kong-gateway:latest
+  template:
+    metadata:
+      labels:
+        app: kong
+    spec:
+      containers:
+        - name: kong
+          image: kong/kong-gateway:latest
+          ports:
+            - containerPort: 8000
+              name: proxy
+            - containerPort: 8443
+              name: proxy-ssl
+            - containerPort: 8001
+              name: admin
+            - containerPort: 8444
+              name: admin-ssl
+          env:
+            - name: KONG_DATABASE
+              value: "off"
+            - name: KONG_PROXY_ACCESS_LOG
+              value: "/dev/stdout"
+            - name: KONG_ADMIN_ACCESS_LOG
+              value: "/dev/stdout"
+            - name: KONG_PROXY_ERROR_LOG
+              value: "/dev/stderr"
+            - name: KONG_ADMIN_ERROR_LOG
+              value: "/dev/stderr"
+            - name: KONG_ADMIN_LISTEN
+              value: "0.0.0.0:8001"
+            - name: KONG_ADMIN_GUI_URL
+              value: "http://localhost:8002"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"

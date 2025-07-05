@@ -1,25 +1,29 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: productservice
+  name: paymentservice
   namespace: ecom-v1
   labels:
-    app: productservice
+    app: paymentservice
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
-      app: productservice
+      app: paymentservice
   template:
     metadata:
       labels:
-        app: productservice
+        app: paymentservice
     spec:
       containers:
-        - name: productservice
-          image: productservice:latest
+        - name: paymentservice
+          image: paymentservice:latest
           imagePullPolicy: Never
+          ports:
+            - containerPort: 5002
           env:
+            - name: SERVER_PORT
+              value: "5002"
             - name: DB_URL
               valueFrom:
                 configMapKeyRef:
@@ -35,56 +39,42 @@ spec:
                 secretKeyRef:
                   name: ecom-secrets
                   key: DB_PASS
-            - name: PORT
-              value: "8000"
-            - name: ELASTIC_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: ecom-config
-                  key: ELASTIC_URL
-            - name: ELASTIC_USER
-              valueFrom:
-                configMapKeyRef:
-                  name: ecom-config
-                  key: ELASTIC_USER
-            - name: ELASTIC_PASS
-              valueFrom:
-                secretKeyRef:
-                  name: ecom-secrets
-                  key: ELASTIC_PASS
-            - name: ELASTIC_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: ecom-secrets
-                  key: ELASTIC_API_KEY
             - name: EUREKA_SERVER
               valueFrom:
                 configMapKeyRef:
                   name: ecom-config
                   key: EUREKA_SERVER
-            - name: REDIS_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: ecom-config
-                  key: REDIS_URL
             - name: JWT_ISSUER_URI
               valueFrom:
                 configMapKeyRef:
                   name: ecom-config
                   key: JWT_ISSUER_URI
-          ports:
-            - containerPort: 8000
+            - name: RAZORPAY_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: ecom-secrets
+                  key: RAZORPAY_KEY_ID
+            - name: RAZORPAY_KEY_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: ecom-secrets
+                  key: RAZORPAY_KEY_SECRET
+            - name: RAZORPAY_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: ecom-secrets
+                  key: RAZORPAY_WEBHOOK_SECRET
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: productservice
+  name: paymentservice
   namespace: ecom-v1
 spec:
   selector:
-    app: productservice
+    app: paymentservice
   ports:
     - protocol: TCP
-      port: 8000
-      targetPort: 8000
-  type: ClusterIP
+      port: 5002
+      targetPort: 5002
+  type: ClusterIP 
