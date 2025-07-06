@@ -99,16 +99,7 @@ openssl rsa -pubout -in oauthserver/src/main/resources/private-key.pem -out oaut
 
 ### 3. Configure Environment Variables
 
-You can use the launch configuration template for setting environment variables for different functions in VSCode or IntelliJ IDEA. This helps avoid passing environment variables manually.
-
-**[📖 Launch Configuration Guide](docs/launch_configuration_guide.md)**
-
-This guide provides:
-- **Template Setup** - Copy and configure the launch configuration template
-- **Service-Specific Configurations** - Detailed setup for each microservice
-- **External Service Setup** - Database, cache, and third-party service configuration
-- **Debugging Instructions** - How to run and debug services from VS Code
-- **Troubleshooting** - Common issues and solutions
+You can use the `launch_copy.json` template for setting environment variables for different functions in VSCode or IntelliJ IDEA. This helps avoid passing environment variables manually.
 
 ### 4. Ensure Infrastructure Services are Running
 
@@ -468,6 +459,23 @@ ecom_v1/
 ├── docs/                 # Documentation
 └── kong.yml              # Kong API gateway configuration
 ```
+
+---
+
+## 📚 API Documentation and Testing
+
+### Postman Collection
+
+For comprehensive API testing and documentation, use our Postman collection:
+
+**[🔗 E-Commerce Microservices API Collection](https://www.postman.com/ofc111/workspace/turjoy-public/collection/26495871-d428b0f7-99d1-4d4e-b47f-fd3616ae2852?action=share&creator=26495871)**
+
+This collection includes:
+- Complete API endpoints for all microservices
+- Pre-configured authentication flows
+- Sample request/response examples
+- Environment variables for different deployment scenarios
+- Automated testing scenarios
 
 ---
 
